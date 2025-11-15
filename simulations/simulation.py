@@ -11,7 +11,7 @@ FPS = 60
 GRAVITY = 0.5
 BOUNCE_DAMPING = 0.9  # Energy loss on bounce
 FRICTION = 0.99  # Ground friction
-PADDLE_SPEED = 8
+PADDLE_SPEED = 15
 TARGET_WIDTH = 80
 TARGET_HEIGHT = 30
 
