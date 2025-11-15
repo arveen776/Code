@@ -1,0 +1,6 @@
+SpeechRecognition>=3.10.0
+PyAudio>=0.2.14
+pyautogui>=0.9.54
+python-dotenv>=1.0.1
+openai>=1.53.0
+

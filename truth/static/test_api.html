@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        
+        .controls {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        select, input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .results {
+            margin-top: 25px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        
+        .section h2 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 20px;
+        }
+        
+        .metadata, .data-table {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        
+        .metadata pre {
+            margin: 0;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #ecf0f1;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+        
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .summary-card {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .summary-card.success {
+            border-left-color: #27ae60;
+        }
+        
+        .summary-card.error {
+            border-left-color: #e74c3c;
+        }
+        
+        .summary-card h3 {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>World Bank API Connection Test</h1>
+        <p class="subtitle">Test the connection to World Bank API and view sample data</p>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="indicator">Indicator:</label>
+                <select id="indicator">
+                    <option value="NY.GDP.MKTP.CD">GDP (current US$)</option>
+                    <option value="SP.POP.TOTL">Population, total</option>
+                    <option value="SP.DYN.LE00.IN">Life expectancy at birth</option>
+                    <option value="NY.GDP.PCAP.CD">GDP per capita (current US$)</option>
+                    <option value="EN.ATM.CO2E.PC">CO2 emissions (metric tons per capita)</option>
+                    <option value="SH.DYN.MORT">Mortality rate, under-5</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="country">Country:</label>
+                <select id="country">
+                    <option value="all">All Countries</option>
+                    <option value="USA">United States</option>
+                    <option value="CHN">China</option>
+                    <option value="IND">India</option>
+                    <option value="GBR">United Kingdom</option>
+                    <option value="JPN">Japan</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="year">Year:</label>
+                <input type="number" id="year" value="2020" min="1960" max="2023">
+            </div>
+            
+            <div class="control-group">
+                <label for="perPage">Records per page:</label>
+                <input type="number" id="perPage" value="10" min="1" max="10000">
+            </div>
+            
+            <button id="testBtn" onclick="runTest()">Run Test</button>
+            <button id="testAllBtn" onclick="testAllIndicators()" style="margin-left: 10px; background: #27ae60;">Test All Indicators</button>
+        </div>
+        
+        <div id="status"></div>
+        <div id="loading" class="loading" style="display: none;">Testing API connection...</div>
+        
+        <div id="results" class="results" style="display: none;">
+            <div class="section">
+                <h2>Connection Status</h2>
+                <div id="connectionStatus"></div>
+            </div>
+            
+            <div class="section">
+                <h2>Response Metadata</h2>
+                <div class="metadata">
+                    <pre id="metadata"></pre>
+                </div>
+            </div>
+            
+            <div class="section">
+                <h2>Sample Data</h2>
+                <div id="dataTable"></div>
+            </div>
+        </div>
+        
+        <div id="summaryResults" style="display: none;">
+            <div class="section">
+                <h2>Multiple Indicators Test Summary</h2>
+                <div id="summary" class="summary"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const WB_API_BASE = "https://api.worldbank.org/v2";
+        
+        async function runTest() {
+            const indicator = document.getElementById('indicator').value;
+            const country = document.getElementById('country').value;
+            const year = document.getElementById('year').value;
+            const perPage = parseInt(document.getElementById('perPage').value);
+            
+            const statusDiv = document.getElementById('status');
+            const loadingDiv = document.getElementById('loading');
+            const resultsDiv = document.getElementById('results');
+            const summaryDiv = document.getElementById('summaryResults');
+            const testBtn = document.getElementById('testBtn');
+            
+            // Hide previous results
+            summaryDiv.style.display = 'none';
+            resultsDiv.style.display = 'none';
+            statusDiv.innerHTML = '';
+            
+            // Show loading
+            loadingDiv.style.display = 'block';
+            testBtn.disabled = true;
+            
+            try {
+                const url = `${WB_API_BASE}/country/${country}/indicator/${indicator}`;
+                const params = new URLSearchParams({
+                    format: 'json',
+                    per_page: perPage,
+                    date: `${year}:${year}`
+                });
+                
+                const fullUrl = `${url}?${params.toString()}`;
+                
+                statusDiv.innerHTML = `<div class="status info">Testing: ${fullUrl}</div>`;
+                
+                const response = await fetch(fullUrl);
+                const data = await response.json();
+                
+                // Hide loading
+                loadingDiv.style.display = 'none';
+                testBtn.disabled = false;
+                
+                // Check response structure
+                if (!Array.isArray(data)) {
+                    statusDiv.innerHTML = `<div class="status error">ERROR: Expected array, got ${typeof data}</div>`;
+                    return;
+                }
+                
+                if (data.length === 0) {
+                    statusDiv.innerHTML = `<div class="status error">ERROR: Empty response</div>`;
+                    return;
+                }
+                
+                if (data.length < 2) {
+                    statusDiv.innerHTML = `<div class="status error">ERROR: Response has metadata but no data array</div>`;
+                    return;
+                }
+                
+                const metadata = data[0];
+                const rows = data[1];
+                
+                // Display connection status
+                document.getElementById('connectionStatus').innerHTML = `
+                    <div class="status success">
+                        ✓ SUCCESS: API connection working!<br>
+                        Status Code: ${response.status}<br>
+                        Response Type: ${Array.isArray(data) ? 'Array' : typeof data}<br>
+                        Data Rows: ${Array.isArray(rows) ? rows.length : 0}
+                    </div>
+                `;
+                
+                // Display metadata
+                document.getElementById('metadata').textContent = JSON.stringify(metadata, null, 2);
+                
+                // Display data table
+                if (Array.isArray(rows) && rows.length > 0) {
+                    let tableHTML = '<table><thead><tr><th>#</th><th>Country</th><th>Country Code</th><th>Date</th><th>Value</th><th>Indicator</th></tr></thead><tbody>';
+                    
+                    rows.forEach((row, index) => {
+                        const country = row.country?.value || 'N/A';
+                        const countryCode = row.country?.id || 'N/A';
+                        const date = row.date || 'N/A';
+                        const value = row.value !== null && row.value !== undefined ? row.value.toLocaleString() : 'N/A';
+                        const indicatorName = row.indicator?.value || 'N/A';
+                        
+                        tableHTML += `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td>${country}</td>
+                                <td>${countryCode}</td>
+                                <td>${date}</td>
+                                <td>${value}</td>
+                                <td>${indicatorName}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tableHTML += '</tbody></table>';
+                    document.getElementById('dataTable').innerHTML = tableHTML;
+                } else {
+                    document.getElementById('dataTable').innerHTML = '<p>No data rows found</p>';
+                }
+                
+                // Show results
+                resultsDiv.style.display = 'block';
+                
+            } catch (error) {
+                loadingDiv.style.display = 'none';
+                testBtn.disabled = false;
+                statusDiv.innerHTML = `<div class="status error">ERROR: ${error.message}</div>`;
+            }
+        }
+        
+        async function testAllIndicators() {
+            const indicators = {
+                "NY.GDP.MKTP.CD": "GDP (current US$)",
+                "SP.POP.TOTL": "Population, total",
+                "SP.DYN.LE00.IN": "Life expectancy at birth",
+                "NY.GDP.PCAP.CD": "GDP per capita",
+                "EN.ATM.CO2E.PC": "CO2 emissions",
+                "SH.DYN.MORT": "Mortality rate"
+            };
+            
+            const country = document.getElementById('country').value;
+            const year = document.getElementById('year').value;
+            const summaryDiv = document.getElementById('summaryResults');
+            const summaryContainer = document.getElementById('summary');
+            const resultsDiv = document.getElementById('results');
+            const loadingDiv = document.getElementById('loading');
+            const testBtn = document.getElementById('testAllBtn');
+            
+            // Hide previous results
+            resultsDiv.style.display = 'none';
+            summaryContainer.innerHTML = '';
+            
+            // Show loading
+            loadingDiv.style.display = 'block';
+            loadingDiv.textContent = 'Testing all indicators...';
+            testBtn.disabled = true;
+            
+            const results = {};
+            
+            for (const [indicatorId, indicatorName] of Object.entries(indicators)) {
+                try {
+                    const url = `${WB_API_BASE}/country/${country}/indicator/${indicatorId}`;
+                    const params = new URLSearchParams({
+                        format: 'json',
+                        per_page: 5,
+                        date: `${year}:${year}`
+                    });
+                    
+                    const response = await fetch(`${url}?${params.toString()}`);
+                    const data = await response.json();
+                    
+                    if (Array.isArray(data) && data.length > 1 && Array.isArray(data[1]) && data[1].length > 0) {
+                        const rows = data[1];
+                        results[indicatorId] = {
+                            status: "SUCCESS",
+                            name: indicatorName,
+                            rows: rows.length,
+                            sampleValue: rows[0].value
+                        };
+                    } else {
+                        results[indicatorId] = {
+                            status: "NO_DATA",
+                            name: indicatorName
+                        };
+                    }
+                } catch (error) {
+                    results[indicatorId] = {
+                        status: "ERROR",
+                        name: indicatorName,
+                        error: error.message
+                    };
+                }
+            }
+            
+            // Display summary
+            summaryContainer.innerHTML = '';
+            for (const [indicatorId, result] of Object.entries(results)) {
+                const cardClass = result.status === 'SUCCESS' ? 'success' : 'error';
+                const statusText = result.status === 'SUCCESS' ? '✓ Working' : result.status === 'NO_DATA' ? 'No Data' : '✗ Error';
+                const valueText = result.status === 'SUCCESS' 
+                    ? `${result.rows} rows` 
+                    : result.error || 'N/A';
+                
+                summaryContainer.innerHTML += `
+                    <div class="summary-card ${cardClass}">
+                        <h3>${result.name}</h3>
+                        <div class="value">${statusText}</div>
+                        <div style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">${valueText}</div>
+                        ${result.sampleValue ? `<div style="font-size: 12px; color: #7f8c8d;">Sample: ${result.sampleValue.toLocaleString()}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            loadingDiv.style.display = 'none';
+            testBtn.disabled = false;
+            summaryDiv.style.display = 'block';
+        }
+        
+        // Auto-run test on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Don't auto-run, let user click the button
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correlation Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        select, input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+        
+        .stats {
+            margin: 25px 0;
+            padding: 15px;
+            background: #ecf0f1;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        .stats strong {
+            color: #2c3e50;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 25px 0;
+        }
+        
+        .provenance {
+            margin-top: 25px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .provenance strong {
+            color: #2c3e50;
+        }
+        
+        .error {
+            margin: 20px 0;
+            padding: 15px;
+            background: #fee;
+            border-left: 4px solid #e74c3c;
+            border-radius: 4px;
+            color: #c0392b;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Time-Series Correlation Analysis</h1>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="xIndicator">X Indicator:</label>
+                <select id="xIndicator"></select>
+            </div>
+            
+            <div class="control-group">
+                <label for="yIndicator">Y Indicator:</label>
+                <select id="yIndicator"></select>
+            </div>
+            
+            <div class="control-group">
+                <label for="yearFrom">Year From:</label>
+                <input type="number" id="yearFrom" value="2000" min="1960" max="2023">
+            </div>
+            
+            <div class="control-group">
+                <label for="yearTo">Year To:</label>
+                <input type="number" id="yearTo" value="2020" min="1960" max="2023">
+            </div>
+            
+            <div class="control-group" style="justify-content: flex-end;">
+                <button id="correlateBtn" onclick="runCorrelation()">Correlate</button>
+            </div>
+        </div>
+        
+        <div id="errorMsg"></div>
+        <div id="loadingMsg" class="loading" style="display: none;">Loading...</div>
+        
+        <div id="stats" class="stats" style="display: none;"></div>
+        
+        <div class="chart-container">
+            <canvas id="scatterChart"></canvas>
+        </div>
+        
+        <div id="provenance" class="provenance" style="display: none;"></div>
+    </div>
+    
+    <script>
+        let chart = null;
+        let indicators = {};
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadIndicators();
+            // Auto-run with defaults
+            await runCorrelation();
+        });
+        
+        async function loadIndicators() {
+            try {
+                const response = await fetch('/indicators');
+                indicators = await response.json();
+                
+                const xSelect = document.getElementById('xIndicator');
+                const ySelect = document.getElementById('yIndicator');
+                
+                // Clear existing options
+                xSelect.innerHTML = '';
+                ySelect.innerHTML = '';
+                
+                // Populate dropdowns
+                const indicatorIds = Object.keys(indicators);
+                indicatorIds.forEach(id => {
+                    const optionX = document.createElement('option');
+                    optionX.value = id;
+                    optionX.textContent = indicators[id];
+                    xSelect.appendChild(optionX);
+                    
+                    const optionY = document.createElement('option');
+                    optionY.value = id;
+                    optionY.textContent = indicators[id];
+                    ySelect.appendChild(optionY);
+                });
+                
+                // Set defaults (first two different indicators)
+                if (indicatorIds.length >= 2) {
+                    xSelect.value = indicatorIds[0];
+                    ySelect.value = indicatorIds[1];
+                }
+            } catch (error) {
+                showError('Failed to load indicators: ' + error.message);
+            }
+        }
+        
+        async function runCorrelation() {
+            const xId = document.getElementById('xIndicator').value;
+            const yId = document.getElementById('yIndicator').value;
+            const yearFrom = parseInt(document.getElementById('yearFrom').value);
+            const yearTo = parseInt(document.getElementById('yearTo').value);
+            
+            // Validation
+            if (!xId || !yId) {
+                showError('Please select both indicators');
+                return;
+            }
+            
+            if (xId === yId) {
+                showError('X and Y indicators must be different');
+                return;
+            }
+            
+            if (yearFrom > yearTo) {
+                showError('Year From must be less than or equal to Year To');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('errorMsg').innerHTML = '';
+            document.getElementById('loadingMsg').style.display = 'block';
+            document.getElementById('stats').style.display = 'none';
+            document.getElementById('provenance').style.display = 'none';
+            document.getElementById('correlateBtn').disabled = true;
+            
+            try {
+                const url = `/correlate?x=${encodeURIComponent(xId)}&y=${encodeURIComponent(yId)}&year_from=${yearFrom}&year_to=${yearTo}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    const errorMsg = data.error || 'Request failed';
+                    const errorDetails = data.error_details || '';
+                    throw new Error(errorMsg + (errorDetails ? ` (${errorDetails})` : ''));
+                }
+                
+                // Update stats
+                updateStats(data);
+                
+                // Update chart
+                updateChart(data);
+                
+                // Update provenance
+                updateProvenance(data);
+                
+            } catch (error) {
+                showError('Error: ' + error.message);
+            } finally {
+                document.getElementById('loadingMsg').style.display = 'none';
+                document.getElementById('correlateBtn').disabled = false;
+            }
+        }
+        
+        function updateStats(data) {
+            const statsDiv = document.getElementById('stats');
+            const stats = data.stats;
+            
+            let html = `<strong>Statistics:</strong> `;
+            html += `n = ${stats.n}`;
+            
+            if (stats.r !== null && stats.r !== undefined) {
+                html += `, r = ${stats.r.toFixed(4)}`;
+            } else {
+                html += `, r = NA`;
+            }
+            
+            if (stats.p !== null && stats.p !== undefined) {
+                html += `, p = ${stats.p.toFixed(4)}`;
+            } else {
+                html += `, p = NA`;
+            }
+            
+            if (stats.n < 3) {
+                html += ` <span style="color: #7f8c8d;">(n < 3, correlation not computed)</span>`;
+            }
+            
+            statsDiv.innerHTML = html;
+            statsDiv.style.display = 'block';
+        }
+        
+        function updateChart(data) {
+            const ctx = document.getElementById('scatterChart').getContext('2d');
+            
+            // Destroy existing chart if any
+            if (chart) {
+                chart.destroy();
+            }
+            
+            const points = data.points || [];
+            
+            if (points.length === 0) {
+                // Show empty state
+                chart = new Chart(ctx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: []
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'No data points available'
+                            }
+                        }
+                    }
+                });
+                return;
+            }
+            
+            chart = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: `${data.x_label} vs ${data.y_label}`,
+                        data: points.map(p => ({ x: p.x, y: p.y })),
+                        backgroundColor: 'rgba(52, 152, 219, 0.6)',
+                        borderColor: 'rgba(52, 152, 219, 1)',
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `${data.x_label} vs ${data.y_label} (${data.year_from}-${data.year_to})`
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: data.x_label
+                            },
+                            type: 'linear',
+                            position: 'bottom'
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: data.y_label
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateProvenance(data) {
+            const provDiv = document.getElementById('provenance');
+            const prov = data.provenance;
+            
+            let html = '<strong>Data Source:</strong> ';
+            html += prov.x.source || 'Unknown';
+            html += '<br><strong>X Series URL:</strong> ';
+            html += `<a href="${prov.x.url}" target="_blank">${prov.x.url}</a>`;
+            html += ` (fetched: ${new Date(prov.x.timestamp).toLocaleString()})`;
+            html += '<br><strong>Y Series URL:</strong> ';
+            html += `<a href="${prov.y.url}" target="_blank">${prov.y.url}</a>`;
+            html += ` (fetched: ${new Date(prov.y.timestamp).toLocaleString()})`;
+            
+            provDiv.innerHTML = html;
+            provDiv.style.display = 'block';
+        }
+        
+        function showError(message, details = null) {
+            const errorDiv = document.getElementById('errorMsg');
+            let html = `<div class="error"><strong>Error:</strong> ${message}`;
+            if (details) {
+                html += `<br><small>Details: ${details}</small>`;
+            }
+            html += `</div>`;
+            errorDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
+

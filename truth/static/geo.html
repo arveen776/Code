@@ -1,0 +1,1868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>US Geospatial Data Visualization</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 350px;
+            background: white;
+            border-right: 1px solid #ddd;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.1);
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+        
+        .section {
+            margin-bottom: 25px;
+        }
+        
+        .section h2 {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+        
+        .layer-control {
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .layer-control:hover {
+            background: #ecf0f1;
+            border-color: #3498db;
+        }
+        
+        .layer-control.active {
+            background: #e8f4f8;
+            border-color: #3498db;
+            border-width: 2px;
+        }
+        
+        .layer-control h3 {
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        .layer-control p {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 8px;
+        }
+        
+        .layer-control .checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .layer-control input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .layer-control label {
+            font-size: 12px;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        .opacity-control {
+            margin-top: 10px;
+        }
+        
+        .opacity-control label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        
+        .opacity-control input[type="range"] {
+            width: 100%;
+        }
+        
+        #map {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            min-height: 600px;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            min-width: 200px;
+        }
+        
+        .legend h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .legend-gradient {
+            height: 20px;
+            border-radius: 3px;
+            margin-bottom: 8px;
+        }
+        
+        .legend-gradient.population {
+            background: linear-gradient(to right, #deebf7, #9ecae1, #6baed6, #3182bd, #08519c);
+        }
+        
+        .legend-gradient.income {
+            background: linear-gradient(to right, #e5f5e0, #a1d99b, #74c476, #41ab5d, #238b45);
+        }
+        
+        .legend-gradient.education {
+            background: linear-gradient(to right, #f2f0f7, #cbc9e2, #9e9ac8, #756bb1, #54278f);
+        }
+        
+        .legend-gradient.unemployment {
+            background: linear-gradient(to right, #fee5d9, #fcae91, #fb6a4a, #de2d26, #a50f15);
+        }
+        
+        .legend-gradient.poverty {
+            background: linear-gradient(to right, #fee5d9, #fcae91, #fb6a4a, #de2d26, #a50f15);
+        }
+        
+        .legend-gradient.life_expectancy {
+            background: linear-gradient(to right, #e0f2f1, #80cbc4, #4db6ac, #26a69a, #00897b);
+        }
+        
+        .legend-gradient.home_ownership {
+            background: linear-gradient(to right, #f5e6d3, #e6c99a, #d4a574, #b8864f, #8b6914);
+        }
+        
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #555;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1001;
+            max-width: 250px;
+            display: none;
+        }
+        
+        .info-panel.active {
+            display: block;
+        }
+        
+        .info-panel h3 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        
+        .info-panel p {
+            font-size: 12px;
+            color: #555;
+            margin: 4px 0;
+        }
+        
+        .correlation-panel {
+            position: absolute;
+            top: 280px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            max-width: 400px;
+            max-height: calc(80vh - 300px);
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .correlation-panel.active {
+            display: block;
+        }
+        
+        /* Navigation Bar */
+        .nav-bar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .nav-button {
+            padding: 8px 16px;
+            background: #ecf0f1;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #2c3e50;
+            transition: all 0.2s;
+        }
+        
+        .nav-button:hover {
+            background: #bdc3c7;
+        }
+        
+        .nav-button.active {
+            background: #3498db;
+            color: white;
+        }
+        
+        /* Visualization Container */
+        .visualization-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        .visualization-view {
+            display: none;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .visualization-view.active {
+            display: block;
+        }
+        
+        /* Parallel Coordinates Container */
+        .parallel-coords-container {
+            width: 100%;
+            height: calc(100vh - 100px);
+            padding: 20px;
+            background: white;
+            overflow: auto;
+        }
+        
+        .parallel-coords-plot {
+            width: 100%;
+            min-height: 600px;
+        }
+        
+        .parallel-coords-controls {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        .parallel-coords-controls label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 13px;
+        }
+        
+        .parallel-coords-controls select {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .correlation-matrix {
+            margin-top: 15px;
+        }
+        
+        .correlation-matrix table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        
+        .correlation-matrix th {
+            background: #f5f5f5;
+            padding: 5px;
+            text-align: center;
+            font-weight: 600;
+            border: 1px solid #ddd;
+        }
+        
+        .correlation-matrix td {
+            padding: 5px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        
+        .correlation-cell {
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        
+        .pattern-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        
+        .pattern-dots {
+            background-image: radial-gradient(circle, #000 1px, transparent 1px);
+            background-size: 8px 8px;
+        }
+        
+        .pattern-lines {
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 4px, #000 4px, #000 8px);
+            background-size: 8px 8px;
+        }
+        
+        .pattern-diagonal {
+            background-image: repeating-linear-gradient(-45deg, transparent, transparent 4px, #000 4px, #000 8px);
+            background-size: 8px 8px;
+        }
+        
+        .cluster-indicator {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 4px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+        
+        .cluster-panel {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .cluster-list {
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .cluster-item {
+            padding: 5px;
+            margin: 3px 0;
+            background: #f9f9f9;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        .correlation-panel h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .correlation-value {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+        
+        .correlation-value.strong {
+            color: #27ae60;
+        }
+        
+        .correlation-value.moderate {
+            color: #f39c12;
+        }
+        
+        .correlation-value.weak {
+            color: #e74c3c;
+        }
+        
+        .scatter-container {
+            width: 100%;
+            height: 200px;
+            margin-top: 10px;
+            position: relative;
+        }
+        
+        .scatter-plot {
+            width: 100%;
+            height: 100%;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            position: relative;
+        }
+        
+        .correlation-indicator {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 3px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+        
+        button {
+            padding: 8px 16px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>US Geospatial Data</h1>
+            <p class="subtitle">Visualize and overlay statistics by state</p>
+            
+            <div class="section">
+                <h2>Data Layers</h2>
+                <div id="layersList">
+                    <div class="loading">Loading layers...</div>
+                </div>
+            </div>
+            
+            <div class="section">
+                <button onclick="clearAllLayers()">Clear All Layers</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <!-- Navigation Bar -->
+            <div class="nav-bar">
+                <button class="nav-button active" onclick="switchView('map')" id="navMap">
+                    🗺️ Map View
+                </button>
+                <button class="nav-button" onclick="switchView('parallel')" id="navParallel">
+                    📊 Parallel Coordinates
+                </button>
+                <button class="nav-button" onclick="switchView('correlation')" id="navCorrelation">
+                    🔗 Correlation Analysis
+                </button>
+            </div>
+            
+            <!-- Visualization Container -->
+            <div class="visualization-container">
+                <!-- Map View -->
+                <div class="visualization-view active" id="mapView">
+                    <div id="map"></div>
+                    <div class="legend" id="legend" style="display: none;">
+                        <h3 id="legendTitle">Legend</h3>
+                        <div class="legend-gradient"></div>
+                        <div class="legend-labels">
+                            <span id="legendMin">Low</span>
+                            <span id="legendMax">High</span>
+                        </div>
+                    </div>
+                    <div class="info-panel" id="infoPanel">
+                        <h3 id="infoState">State</h3>
+                        <div id="infoContent"></div>
+                    </div>
+                </div>
+                
+                <!-- Parallel Coordinates View -->
+                <div class="visualization-view" id="parallelView">
+                    <div class="parallel-coords-container">
+                        <div class="parallel-coords-controls">
+                            <label>Color lines by:</label>
+                            <select id="colorBySelect" onchange="updateParallelCoordinates()">
+                                <option value="cluster">Cluster (High/Medium/Low)</option>
+                                <option value="state">State Name</option>
+                                <option value="none">No Color (All Gray)</option>
+                            </select>
+                        </div>
+                        <div id="parallelCoordsPlot" class="parallel-coords-plot"></div>
+                        <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 12px; color: #555;">
+                            <strong>How to use:</strong> Each line represents one state. Drag axes to reorder, 
+                            brush on axes to filter states, hover over lines to see state names.
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Correlation Analysis View -->
+                <div class="visualization-view" id="correlationView">
+                    <div style="padding: 20px; height: calc(100vh - 100px); overflow-y: auto;">
+                        <div class="correlation-panel" id="correlationPanel" style="position: relative; max-width: 100%; max-height: none;">
+                            <h3>Multi-Layer Analysis</h3>
+                            <div id="correlationContent">
+                                <p style="color: #7f8c8d; font-size: 12px;">Select 2+ layers to see correlations</p>
+                                <p style="color: #7f8c8d; font-size: 11px; margin-top: 5px; font-style: italic;">
+                                    Note: Correlation compares states to each other (spatial), not over time
+                                </p>
+                            </div>
+                            <div class="correlation-matrix" id="correlationMatrix" style="display: none;"></div>
+                            <div class="cluster-panel" id="clusterPanel" style="display: none;">
+                                <h4 style="font-size: 13px; margin-bottom: 8px;">State Clusters (Similar Patterns)</h4>
+                                <div class="cluster-list" id="clusterList"></div>
+                            </div>
+                            <div class="scatter-container" id="scatterContainer" style="display: none;">
+                                <canvas id="scatterPlot" class="scatter-plot"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Plotly.js for Parallel Coordinates -->
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+    
+    <script>
+        // Initialize map centered on US
+        const map = L.map('map').setView([39.8283, -98.5795], 4);
+        
+        // Add base tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        
+        // Store active layers
+        let activeLayers = {};
+        const layersData = {};
+        let geoJsonLayer = null;
+        
+        // Color scale function - different colors for each layer type
+        function getColor(value, min, max, layerId) {
+            if (value === null || value === undefined) return '#cccccc';
+            
+            const normalized = (value - min) / (max - min);
+            const clamped = Math.max(0, Math.min(1, normalized));
+            
+            // Different color schemes for each layer
+            if (layerId === 'population') {
+                // Blue scale for population
+                if (clamped < 0.2) return '#deebf7';
+                if (clamped < 0.4) return '#9ecae1';
+                if (clamped < 0.6) return '#6baed6';
+                if (clamped < 0.8) return '#3182bd';
+                return '#08519c';
+            } else if (layerId === 'median_income') {
+                // Green scale for income
+                if (clamped < 0.2) return '#e5f5e0';
+                if (clamped < 0.4) return '#a1d99b';
+                if (clamped < 0.6) return '#74c476';
+                if (clamped < 0.8) return '#41ab5d';
+                return '#238b45';
+            } else if (layerId === 'education') {
+                // Purple scale for education
+                if (clamped < 0.2) return '#f2f0f7';
+                if (clamped < 0.4) return '#cbc9e2';
+                if (clamped < 0.6) return '#9e9ac8';
+                if (clamped < 0.8) return '#756bb1';
+                return '#54278f';
+            } else if (layerId === 'unemployment') {
+                // Orange/Yellow scale for unemployment (reverse - higher unemployment = darker)
+                if (clamped < 0.2) return '#fee5d9';
+                if (clamped < 0.4) return '#fcae91';
+                if (clamped < 0.6) return '#fb6a4a';
+                if (clamped < 0.8) return '#de2d26';
+                return '#a50f15';
+            } else if (layerId === 'poverty') {
+                // Red scale for poverty (higher poverty = darker red)
+                if (clamped < 0.2) return '#fee5d9';
+                if (clamped < 0.4) return '#fcae91';
+                if (clamped < 0.6) return '#fb6a4a';
+                if (clamped < 0.8) return '#de2d26';
+                return '#a50f15';
+            } else if (layerId === 'life_expectancy') {
+                // Teal/Cyan scale for life expectancy
+                if (clamped < 0.2) return '#e0f2f1';
+                if (clamped < 0.4) return '#80cbc4';
+                if (clamped < 0.6) return '#4db6ac';
+                if (clamped < 0.8) return '#26a69a';
+                return '#00897b';
+            } else if (layerId === 'home_ownership') {
+                // Brown/Tan scale for home ownership
+                if (clamped < 0.2) return '#f5e6d3';
+                if (clamped < 0.4) return '#e6c99a';
+                if (clamped < 0.6) return '#d4a574';
+                if (clamped < 0.8) return '#b8864f';
+                return '#8b6914';
+            } else {
+                // Default red scale
+                if (clamped < 0.2) return '#fee5d9';
+                if (clamped < 0.4) return '#fcae91';
+                if (clamped < 0.6) return '#fb6a4a';
+                if (clamped < 0.8) return '#de2d26';
+                return '#a50f15';
+            }
+        }
+        
+        // Style function for GeoJSON
+        function styleLayer(feature, layerId, data, min, max, opacity, reverse = false) {
+            const stateCode = feature.properties.STUSPS || feature.properties.state;
+            const value = data[stateCode];
+            
+            return {
+                fillColor: getColor(value, min, max, reverse),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: opacity || 0.7
+            };
+        }
+        
+        // Load US states GeoJSON
+        async function loadStatesGeoJSON() {
+            try {
+                console.log('Loading US states GeoJSON...');
+                // Try alternative source if first fails
+                let geoJson = null;
+                const sources = [
+                    'https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json',
+                    'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json'
+                ];
+                
+                for (const url of sources) {
+                    try {
+                        const response = await fetch(url);
+                        if (response.ok) {
+                            geoJson = await response.json();
+                            console.log('GeoJSON loaded from:', url);
+                            break;
+                        }
+                    } catch (e) {
+                        console.warn('Failed to load from', url, e);
+                        continue;
+                    }
+                }
+                
+                if (!geoJson) {
+                    // Fallback: use a simple GeoJSON with just state boundaries
+                    console.error('Could not load GeoJSON from any source, using fallback');
+                    throw new Error('Could not load GeoJSON');
+                }
+                
+                // Handle different GeoJSON formats
+                let features = geoJson.features || geoJson;
+                if (!Array.isArray(features)) {
+                    features = [geoJson];
+                }
+                
+                geoJsonLayer = L.geoJSON(geoJson, {
+                    style: function(feature) {
+                        return {
+                            fillColor: '#e8e8e8',
+                            weight: 2,
+                            opacity: 1,
+                            color: '#666',
+                            dashArray: '',
+                            fillOpacity: 0.5
+                        };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.on({
+                            mouseover: highlightFeature,
+                            mouseout: resetHighlight,
+                            click: zoomToFeature
+                        });
+                    }
+                }).addTo(map);
+                
+                console.log('GeoJSON layer added to map');
+                return geoJson;
+            } catch (error) {
+                console.error('Error loading GeoJSON:', error);
+                // Show error message to user
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 1000;';
+                errorDiv.innerHTML = '<h3>Error Loading Map Data</h3><p>Could not load US states GeoJSON. Please check your internet connection and try again.</p><p style="font-size: 12px; color: #666;">Error: ' + error.message + '</p>';
+                document.getElementById('map').appendChild(errorDiv);
+                return null;
+            }
+        }
+        
+        function highlightFeature(e) {
+            const layer = e.target;
+            layer.setStyle({
+                weight: 4,
+                color: '#3498db',
+                dashArray: '',
+                fillOpacity: 0.8
+            });
+            
+            if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+                layer.bringToFront();
+            }
+            
+            showInfo(layer.feature);
+        }
+        
+        function resetHighlight(e) {
+            // Reset to current layer styles
+            const layer = e.target;
+            updateLayerStyles();
+            hideInfo();
+        }
+        
+        function zoomToFeature(e) {
+            map.fitBounds(e.target.getBounds());
+        }
+        
+        function showInfo(feature) {
+            const panel = document.getElementById('infoPanel');
+            const stateName = feature.properties.NAME || feature.properties.name || 'Unknown';
+            panel.querySelector('#infoState').textContent = stateName;
+            
+            let content = '';
+            const stateCode = getStateCode(feature);
+            
+            for (const [layerId, layer] of Object.entries(activeLayers)) {
+                if (layer && layer.data) {
+                    const value = layer.data[stateCode];
+                    if (value !== null && value !== undefined) {
+                        content += `<p><strong>${layer.name}:</strong> ${formatValue(value, layerId)}</p>`;
+                    }
+                }
+            }
+            
+            if (!content) {
+                content = '<p>No data available</p>';
+            }
+            
+            panel.querySelector('#infoContent').innerHTML = content;
+            panel.classList.add('active');
+        }
+        
+        function hideInfo() {
+            document.getElementById('infoPanel').classList.remove('active');
+        }
+        
+        function formatValue(value, layerId) {
+            if (layerId === 'population') {
+                return value.toLocaleString();
+            } else if (layerId === 'median_income') {
+                return '$' + value.toLocaleString();
+            } else if (layerId === 'education' || layerId === 'unemployment' || layerId === 'poverty' || layerId === 'home_ownership') {
+                return value.toFixed(1) + '%';
+            } else if (layerId === 'life_expectancy') {
+                return value.toFixed(1) + ' years';
+            }
+            return value;
+        }
+        
+        // Load available layers
+        async function loadLayers() {
+            try {
+                const response = await fetch('/api/geo/layers');
+                const layers = await response.json();
+                
+                const layersList = document.getElementById('layersList');
+                layersList.innerHTML = '';
+                
+                for (const [layerId, layerInfo] of Object.entries(layers)) {
+                    const layerDiv = document.createElement('div');
+                    layerDiv.className = 'layer-control';
+                    layerDiv.innerHTML = `
+                        <h3>${layerInfo.name}</h3>
+                        <p>${layerInfo.description}</p>
+                        <div class="checkbox">
+                            <input type="checkbox" id="layer_${layerId}" onchange="toggleLayer('${layerId}')">
+                            <label for="layer_${layerId}">Show on map</label>
+                        </div>
+                        <div class="opacity-control" id="opacity_${layerId}" style="display: none;">
+                            <label>Opacity: <span id="opacityValue_${layerId}">70</span>%</label>
+                            <input type="range" min="0" max="100" value="70" 
+                                   oninput="updateOpacity('${layerId}', this.value)">
+                        </div>
+                    `;
+                    layersList.appendChild(layerDiv);
+                }
+            } catch (error) {
+                console.error('Error loading layers:', error);
+                document.getElementById('layersList').innerHTML = 
+                    '<div class="loading">Error loading layers</div>';
+            }
+        }
+        
+        // Toggle layer on/off
+        async function toggleLayer(layerId) {
+            const checkbox = document.getElementById(`layer_${layerId}`);
+            const opacityControl = document.getElementById(`opacity_${layerId}`);
+            
+            if (checkbox.checked) {
+                // Load and add layer
+                try {
+                    const response = await fetch(`/api/geo/data/${layerId}`);
+                    const layerData = await response.json();
+                    
+                    if (!geoJsonLayer) {
+                        await loadStatesGeoJSON();
+                    }
+                    
+                    // Store layer data
+                    activeLayers[layerId] = {
+                        name: layerData.layer_name,
+                        data: layerData.data,
+                        min: layerData.min,
+                        max: layerData.max,
+                        opacity: 0.7,
+                        layer_id: layerId
+                    };
+                    
+                    console.log('Layer loaded:', layerId, 'Data keys:', Object.keys(layerData.data).slice(0, 5));
+                    
+                    // Update styles
+                    updateLayerStyles();
+                    
+                    // Show opacity control
+                    opacityControl.style.display = 'block';
+                    
+                    // Update legend (ensure layer_id is included)
+                    updateLegend({
+                        layer_name: layerData.layer_name,
+                        layer_id: layerId,
+                        min: layerData.min,
+                        max: layerData.max
+                    });
+                    
+                    // Update correlation analysis if 2+ layers
+                    updateCorrelationAnalysis();
+                    
+                    // Update parallel coordinates if on that view
+                    if (document.getElementById('parallelView').classList.contains('active')) {
+                        updateParallelCoordinates();
+                    }
+                    
+                } catch (error) {
+                    console.error('Error loading layer:', error);
+                    checkbox.checked = false;
+                }
+            } else {
+                // Remove layer
+                delete activeLayers[layerId];
+                updateLayerStyles();
+                opacityControl.style.display = 'none';
+                
+                // Update legend if no layers
+                if (Object.keys(activeLayers).length === 0) {
+                    document.getElementById('legend').style.display = 'none';
+                    document.getElementById('correlationPanel').classList.remove('active');
+                } else {
+                    // Update legend with first active layer
+                    const firstLayerId = Object.keys(activeLayers)[0];
+                    const firstLayer = activeLayers[firstLayerId];
+                    updateLegend({
+                        layer_name: firstLayer.name,
+                        layer_id: firstLayerId,
+                        min: firstLayer.min,
+                        max: firstLayer.max
+                    });
+                    
+                    // Update correlation analysis
+                    updateCorrelationAnalysis();
+                    
+                    // Update parallel coordinates if on that view
+                    if (document.getElementById('parallelView').classList.contains('active')) {
+                        updateParallelCoordinates();
+                    }
+                }
+            }
+        }
+        
+        // Calculate and display correlation between two layers
+        // This calculates SPATIAL correlation - comparing values across different states (geographic locations)
+        // Each state is one data point: (State1_Income, State1_Education), (State2_Income, State2_Education), etc.
+        // We're NOT looking at time-series - we're comparing how states differ from each other
+        function calculateCorrelation(layer1, layer2) {
+            const keys1 = Object.keys(layer1.data);
+            const keys2 = Object.keys(layer2.data);
+            
+            // Find common states (each state is one data point)
+            const commonStates = keys1.filter(k => keys2.includes(k) && 
+                layer1.data[k] !== null && layer1.data[k] !== undefined &&
+                layer2.data[k] !== null && layer2.data[k] !== undefined);
+            
+            if (commonStates.length < 3) {
+                return null;
+            }
+            
+            // Get paired values: each state gives us one (x, y) pair
+            // Example: CA has (Income=$80k, Education=35%) = one point
+            //          NY has (Income=$73k, Education=37%) = another point
+            //          etc. for all 50 states
+            const values1 = commonStates.map(s => layer1.data[s]);
+            const values2 = commonStates.map(s => layer2.data[s]);
+            
+            // Calculate Pearson correlation coefficient across states
+            // This tells us: "Do states with high income also tend to have high education?"
+            const mean1 = values1.reduce((a, b) => a + b, 0) / values1.length;
+            const mean2 = values2.reduce((a, b) => a + b, 0) / values2.length;
+            
+            let numerator = 0;
+            let sumSq1 = 0;
+            let sumSq2 = 0;
+            
+            for (let i = 0; i < values1.length; i++) {
+                const diff1 = values1[i] - mean1;
+                const diff2 = values2[i] - mean2;
+                numerator += diff1 * diff2;
+                sumSq1 += diff1 * diff1;
+                sumSq2 += diff2 * diff2;
+            }
+            
+            const denominator = Math.sqrt(sumSq1 * sumSq2);
+            if (denominator === 0) return null;
+            
+            const correlation = numerator / denominator;
+            return {
+                r: correlation,
+                n: commonStates.length,
+                states: commonStates,
+                values1: values1,
+                values2: values2,
+                layer1Name: layer1.name,
+                layer2Name: layer2.name,
+                explanation: `Correlation across ${commonStates.length} states: Does a state's ${layer1.name} predict its ${layer2.name}?`
+            };
+        }
+        
+        function updateCorrelationAnalysis() {
+            const activeLayerIds = Object.keys(activeLayers);
+            const panel = document.getElementById('correlationPanel');
+            const content = document.getElementById('correlationContent');
+            const scatterContainer = document.getElementById('scatterContainer');
+            const matrixDiv = document.getElementById('correlationMatrix');
+            const clusterPanelDiv = document.getElementById('clusterPanel');
+            
+            if (activeLayerIds.length < 2) {
+                panel.classList.remove('active');
+                return;
+            }
+            
+            panel.classList.add('active');
+            
+            // Build correlation matrix for all pairs
+            if (activeLayerIds.length >= 2) {
+                buildCorrelationMatrix(activeLayerIds);
+                matrixDiv.style.display = 'block';
+            } else {
+                matrixDiv.style.display = 'none';
+            }
+            
+            // Cluster analysis for pattern detection
+            if (activeLayerIds.length >= 2) {
+                const clusters = detectStateClusters(activeLayerIds);
+                displayClusters(clusters);
+                highlightClusters(clusters);
+                clusterPanelDiv.style.display = 'block';
+            } else {
+                clusterPanelDiv.style.display = 'none';
+            }
+            
+            // Show scatter plot for first two if exactly 2 layers
+            if (activeLayerIds.length === 2) {
+                const layer1Id = activeLayerIds[0];
+                const layer2Id = activeLayerIds[1];
+                const layer1 = activeLayers[layer1Id];
+                const layer2 = activeLayers[layer2Id];
+                
+                const correlation = calculateCorrelation(layer1, layer2);
+                
+                if (correlation) {
+                    content.innerHTML = `
+                        <div>
+                            <p style="font-size: 12px; color: #7f8c8d; margin-bottom: 5px;">
+                                ${layer1.name} vs ${layer2.name}
+                            </p>
+                            <div class="correlation-value ${getStrengthClass(Math.abs(correlation.r))}">
+                                r = ${correlation.r.toFixed(3)}
+                            </div>
+                            <p style="font-size: 11px; color: #555; margin-top: 8px; line-height: 1.4;">
+                                <strong>How it works:</strong><br>
+                                Each of ${correlation.n} states is one data point.<br>
+                                Correlation shows if states with high ${layer1.name.substring(0, 20)}...<br>
+                                also tend to have high ${layer2.name.substring(0, 20)}...
+                            </p>
+                        </div>
+                    `;
+                    drawScatterPlot(correlation);
+                    scatterContainer.style.display = 'block';
+                } else {
+                    content.innerHTML = '<p style="color: #e74c3c; font-size: 12px;">Not enough data</p>';
+                    scatterContainer.style.display = 'none';
+                }
+            } else {
+                content.innerHTML = `
+                    <div>
+                        <p style="font-size: 12px; color: #555;">
+                            ${activeLayerIds.length} layers active<br>
+                            See matrix below for pair-wise correlations
+                        </p>
+                    </div>
+                `;
+                scatterContainer.style.display = 'none';
+            }
+        }
+        
+        function getStrengthClass(strength) {
+            if (strength >= 0.7) return 'strong';
+            if (strength >= 0.4) return 'moderate';
+            return 'weak';
+        }
+        
+        function buildCorrelationMatrix(layerIds) {
+            const matrixDiv = document.getElementById('correlationMatrix');
+            
+            // Create matrix HTML
+            let html = '<table><thead><tr><th></th>';
+            
+            const layerNames = layerIds.map(id => activeLayers[id].name);
+            layerNames.forEach(name => {
+                html += `<th style="font-size: 10px;">${name.substring(0, 15)}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            const correlations = {};
+            
+            // Calculate all pair-wise correlations
+            for (let i = 0; i < layerIds.length; i++) {
+                html += `<tr><th style="font-size: 10px;">${layerNames[i].substring(0, 15)}</th>`;
+                for (let j = 0; j < layerIds.length; j++) {
+                    if (i === j) {
+                        html += '<td style="background: #f0f0f0;">1.0</td>';
+                    } else {
+                        const layer1 = activeLayers[layerIds[i]];
+                        const layer2 = activeLayers[layerIds[j]];
+                        const corr = calculateCorrelation(layer1, layer2);
+                        
+                        if (corr) {
+                            const r = corr.r;
+                            const strength = Math.abs(r);
+                            const strengthClass = getStrengthClass(strength);
+                            const bgColor = r > 0 ? 
+                                (strengthClass === 'strong' ? '#d4edda' : strengthClass === 'moderate' ? '#fff3cd' : '#f8d7da') :
+                                (strengthClass === 'strong' ? '#d1ecf1' : strengthClass === 'moderate' ? '#d4edda' : '#f8d7da');
+                            
+                            html += `<td style="background: ${bgColor};">
+                                <span class="correlation-cell" style="color: ${r > 0 ? '#155724' : '#0c5460'};">
+                                    ${r > 0 ? '+' : ''}${r.toFixed(2)}
+                                </span>
+                            </td>`;
+                            
+                            const key = `${layerIds[i]}-${layerIds[j]}`;
+                            correlations[key] = r;
+                        } else {
+                            html += '<td style="background: #f0f0f0;">-</td>';
+                        }
+                    }
+                }
+                html += '</tr>';
+            }
+            
+            html += '</tbody></table>';
+            matrixDiv.innerHTML = html;
+        }
+        
+        function detectStateClusters(layerIds) {
+            // Get all states that have data for all selected layers
+            const allStates = new Set();
+            layerIds.forEach(id => {
+                Object.keys(activeLayers[id].data).forEach(state => {
+                    allStates.add(state);
+                });
+            });
+            
+            // Filter to states with complete data
+            const completeStates = Array.from(allStates).filter(state => {
+                return layerIds.every(id => {
+                    const value = activeLayers[id].data[state];
+                    return value !== null && value !== undefined;
+                });
+            });
+            
+            if (completeStates.length < 3) return [];
+            
+            // Normalize values for each state across all layers
+            const stateProfiles = {};
+            completeStates.forEach(state => {
+                const profile = layerIds.map(id => {
+                    const layer = activeLayers[id];
+                    const value = layer.data[state];
+                    // Normalize to 0-1 scale
+                    return (value - layer.min) / (layer.max - layer.min);
+                });
+                stateProfiles[state] = profile;
+            });
+            
+            // Simple k-means clustering (k=3 for high, medium, low)
+            const clusters = {
+                'high': [],
+                'medium': [],
+                'low': []
+            };
+            
+            // Calculate average profile for each state
+            completeStates.forEach(state => {
+                const profile = stateProfiles[state];
+                const avg = profile.reduce((a, b) => a + b, 0) / profile.length;
+                
+                if (avg > 0.66) {
+                    clusters.high.push(state);
+                } else if (avg < 0.33) {
+                    clusters.low.push(state);
+                } else {
+                    clusters.medium.push(state);
+                }
+            });
+            
+            return clusters;
+        }
+        
+        function displayClusters(clusters) {
+            const clusterList = document.getElementById('clusterList');
+            
+            let html = '';
+            
+            if (clusters.high.length > 0) {
+                html += `<div class="cluster-item" style="border-left: 4px solid #27ae60;">
+                    <strong>High Values (${clusters.high.length}):</strong><br>
+                    ${clusters.high.slice(0, 10).join(', ')}
+                    ${clusters.high.length > 10 ? '...' : ''}
+                </div>`;
+            }
+            
+            if (clusters.medium.length > 0) {
+                html += `<div class="cluster-item" style="border-left: 4px solid #f39c12;">
+                    <strong>Medium Values (${clusters.medium.length}):</strong><br>
+                    ${clusters.medium.slice(0, 10).join(', ')}
+                    ${clusters.medium.length > 10 ? '...' : ''}
+                </div>`;
+            }
+            
+            if (clusters.low.length > 0) {
+                html += `<div class="cluster-item" style="border-left: 4px solid #e74c3c;">
+                    <strong>Low Values (${clusters.low.length}):</strong><br>
+                    ${clusters.low.slice(0, 10).join(', ')}
+                    ${clusters.low.length > 10 ? '...' : ''}
+                </div>`;
+            }
+            
+            clusterList.innerHTML = html || '<p style="font-size: 11px; color: #7f8c8d;">No clusters detected</p>';
+        }
+        
+        function highlightClusters(clusters) {
+            if (!geoJsonLayer) return;
+            
+            // Remove previous cluster indicators
+            map.eachLayer(function(layer) {
+                if (layer.options && layer.options.isClusterIndicator) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // Add markers for each cluster
+            const colors = {
+                'high': '#27ae60',
+                'medium': '#f39c12',
+                'low': '#e74c3c'
+            };
+            
+            Object.keys(clusters).forEach(clusterType => {
+                clusters[clusterType].forEach(stateCode => {
+                    geoJsonLayer.eachLayer(function(geoLayer) {
+                        const code = getStateCode(geoLayer.feature);
+                        if (code === stateCode) {
+                            const bounds = geoLayer.getBounds();
+                            const center = bounds.getCenter();
+                            
+                            const marker = L.circleMarker(center, {
+                                radius: 10,
+                                fillColor: colors[clusterType],
+                                color: '#fff',
+                                weight: 2,
+                                opacity: 1,
+                                fillOpacity: 0.8,
+                                isClusterIndicator: true
+                            }).addTo(map);
+                        }
+                    });
+                });
+            });
+        }
+        
+        function drawScatterPlot(correlation) {
+            const canvas = document.getElementById('scatterPlot');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height = 200;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+            
+            const padding = 40;
+            const plotWidth = width - 2 * padding;
+            const plotHeight = height - 2 * padding;
+            
+            const values1 = correlation.values1;
+            const values2 = correlation.values2;
+            
+            const min1 = Math.min(...values1);
+            const max1 = Math.max(...values1);
+            const min2 = Math.min(...values2);
+            const max2 = Math.max(...values2);
+            
+            // Draw axes
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, height - padding);
+            ctx.lineTo(width - padding, height - padding);
+            ctx.stroke();
+            
+            // Draw axis labels
+            ctx.fillStyle = '#555';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(correlation.layer1Name, width / 2, height - 10);
+            ctx.save();
+            ctx.translate(15, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(correlation.layer2Name, 0, 0);
+            ctx.restore();
+            
+            // Draw subtitle explaining what each point represents
+            ctx.fillStyle = '#999';
+            ctx.font = '9px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Each point = one state (${correlation.n} total)`, width / 2, padding - 5);
+            
+            // Draw points - each point represents one state
+            ctx.fillStyle = '#3498db';
+            for (let i = 0; i < values1.length; i++) {
+                const x = padding + (values1[i] - min1) / (max1 - min1) * plotWidth;
+                const y = height - padding - (values2[i] - min2) / (max2 - min2) * plotHeight;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            
+            // Draw trend line if correlation is strong
+            if (Math.abs(correlation.r) > 0.3) {
+                // Simple linear regression
+                const n = values1.length;
+                const sumX = values1.reduce((a, b) => a + b, 0);
+                const sumY = values2.reduce((a, b) => a + b, 0);
+                const sumXY = values1.reduce((sum, x, i) => sum + x * values2[i], 0);
+                const sumX2 = values1.reduce((sum, x) => sum + x * x, 0);
+                
+                const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+                const intercept = (sumY - slope * sumX) / n;
+                
+                const y1 = intercept + slope * min1;
+                const y2 = intercept + slope * max1;
+                
+                const px1 = padding;
+                const py1 = height - padding - (y1 - min2) / (max2 - min2) * plotHeight;
+                const px2 = width - padding;
+                const py2 = height - padding - (y2 - min2) / (max2 - min2) * plotHeight;
+                
+                ctx.strokeStyle = correlation.r > 0 ? '#27ae60' : '#e74c3c';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(px1, py1);
+                ctx.lineTo(px2, py2);
+                ctx.stroke();
+            }
+        }
+        
+        function highlightCorrelatedStates(correlation) {
+            if (!geoJsonLayer) return;
+            
+            // Remove previous indicators
+            map.eachLayer(function(layer) {
+                if (layer.options && layer.options.isCorrelationIndicator) {
+                    map.removeLayer(layer);
+                }
+            });
+            
+            // For strong correlations, add markers on states that are outliers or strongly correlated
+            if (Math.abs(correlation.r) > 0.5) {
+                const values1 = correlation.values1;
+                const values2 = correlation.values2;
+                const mean1 = values1.reduce((a, b) => a + b, 0) / values1.length;
+                const mean2 = values2.reduce((a, b) => a + b, 0) / values2.length;
+                
+                geoJsonLayer.eachLayer(function(geoLayer) {
+                    const stateCode = getStateCode(geoLayer.feature);
+                    const index = correlation.states.indexOf(stateCode);
+                    
+                    if (index !== -1) {
+                        const val1 = values1[index];
+                        const val2 = values2[index];
+                        
+                        // Highlight states that are above mean in both metrics (strong positive correlation)
+                        // or opposite (strong negative correlation)
+                        const aboveMean1 = val1 > mean1;
+                        const aboveMean2 = val2 > mean2;
+                        const bothAbove = aboveMean1 && aboveMean2;
+                        const bothBelow = !aboveMean1 && !aboveMean2;
+                        
+                        if (correlation.r > 0 && (bothAbove || bothBelow)) {
+                            const bounds = geoLayer.getBounds();
+                            const center = bounds.getCenter();
+                            
+                            const marker = L.circleMarker(center, {
+                                radius: 8,
+                                fillColor: '#f39c12',
+                                color: '#fff',
+                                weight: 2,
+                                opacity: 1,
+                                fillOpacity: 0.8,
+                                isCorrelationIndicator: true
+                            }).addTo(map);
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Helper function to blend multiple colors
+        function blendColors(hexColors, opacities) {
+            if (hexColors.length === 0) return '#cccccc';
+            if (hexColors.length === 1) return hexColors[0];
+            
+            // Convert hex to RGB
+            const rgbColors = hexColors.map(hex => {
+                const r = parseInt(hex.slice(1, 3), 16);
+                const g = parseInt(hex.slice(3, 5), 16);
+                const b = parseInt(hex.slice(5, 7), 16);
+                return { r, g, b };
+            });
+            
+            // Normalize opacities (they should already be 0-1)
+            const totalOpacity = opacities.reduce((a, b) => a + b, 0);
+            const weights = opacities.map(o => o / totalOpacity);
+            
+            // Weighted average of RGB values
+            let r = 0, g = 0, b = 0;
+            for (let i = 0; i < rgbColors.length; i++) {
+                r += rgbColors[i].r * weights[i];
+                g += rgbColors[i].g * weights[i];
+                b += rgbColors[i].b * weights[i];
+            }
+            
+            // Convert back to hex
+            const toHex = (n) => {
+                const hex = Math.round(n).toString(16);
+                return hex.length === 1 ? '0' + hex : hex;
+            };
+            
+            return '#' + toHex(r) + toHex(g) + toHex(b);
+        }
+        
+        // State name to code mapping
+        const stateNameToCode = {
+            'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA',
+            'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL', 'Georgia': 'GA',
+            'Hawaii': 'HI', 'Idaho': 'ID', 'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA',
+            'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+            'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS', 'Missouri': 'MO',
+            'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV', 'New Hampshire': 'NH', 'New Jersey': 'NJ',
+            'New Mexico': 'NM', 'New York': 'NY', 'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH',
+            'Oklahoma': 'OK', 'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+            'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT',
+            'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY',
+            'District of Columbia': 'DC'
+        };
+        
+        function getStateCode(feature) {
+            // Try STUSPS (most common)
+            if (feature.properties.STUSPS) return feature.properties.STUSPS;
+            // Try state (2-letter code)
+            if (feature.properties.state && feature.properties.state.length === 2) return feature.properties.state;
+            // Try STATE (2-letter code)
+            if (feature.properties.STATE && feature.properties.STATE.length === 2) return feature.properties.STATE;
+            // Try name mapping
+            const name = feature.properties.NAME || feature.properties.name;
+            if (name && stateNameToCode[name]) return stateNameToCode[name];
+            // Return original if nothing matches
+            return feature.properties.STUSPS || feature.properties.state || feature.properties.STATE || name;
+        }
+        
+        function updateLayerStyles() {
+            if (!geoJsonLayer) {
+                console.warn('geoJsonLayer not initialized');
+                return;
+            }
+            
+            console.log('Updating layer styles, active layers:', Object.keys(activeLayers));
+            
+            let styledCount = 0;
+            let noDataCount = 0;
+            
+            geoJsonLayer.eachLayer(function(layer) {
+                const feature = layer.feature;
+                let combinedStyle = {
+                    fillColor: '#e8e8e8',
+                    weight: 2,
+                    opacity: 1,
+                    color: '#666',
+                    dashArray: '',
+                    fillOpacity: 0.5
+                };
+                
+                // Get state code using our mapping function
+                const stateCode = getStateCode(feature);
+                
+                // Multi-layer visualization: use different visual encodings
+                let hasData = false;
+                const layerArray = Object.entries(activeLayers);
+                
+                if (layerArray.length === 1) {
+                    // Single layer - just use color
+                    const [layerId, layerData] = layerArray[0];
+                    const value = layerData.data[stateCode];
+                    if (value !== null && value !== undefined) {
+                        hasData = true;
+                        combinedStyle.fillColor = getColor(value, layerData.min, layerData.max, layerId);
+                        combinedStyle.fillOpacity = layerData.opacity;
+                    }
+                } else if (layerArray.length === 2) {
+                    // Two layers - use color for first, border thickness for second
+                    const [layer1Id, layer1Data] = layerArray[0];
+                    const [layer2Id, layer2Data] = layerArray[1];
+                    
+                    const val1 = layer1Data.data[stateCode];
+                    const val2 = layer2Data.data[stateCode];
+                    
+                    if (val1 !== null && val1 !== undefined) {
+                        hasData = true;
+                        combinedStyle.fillColor = getColor(val1, layer1Data.min, layer1Data.max, layer1Id);
+                        combinedStyle.fillOpacity = layer1Data.opacity;
+                    }
+                    
+                    if (val2 !== null && val2 !== undefined) {
+                        // Border thickness based on second layer (normalized)
+                        const normalized = (val2 - layer2Data.min) / (layer2Data.max - layer2Data.min);
+                        combinedStyle.weight = 2 + Math.round(normalized * 4); // 2-6px border
+                        combinedStyle.color = getColor(val2, layer2Data.min, layer2Data.max, layer2Id);
+                    }
+                } else {
+                    // 3+ layers - use color for first, patterns for others
+                    const [primaryId, primaryData] = layerArray[0];
+                    const primaryValue = primaryData.data[stateCode];
+                    
+                    if (primaryValue !== null && primaryValue !== undefined) {
+                        hasData = true;
+                        combinedStyle.fillColor = getColor(primaryValue, primaryData.min, primaryData.max, primaryId);
+                        combinedStyle.fillOpacity = primaryData.opacity;
+                    }
+                    
+                    // Use border and pattern for additional layers
+                    layerArray.slice(1, 3).forEach(([layerId, layerData], index) => {
+                        const value = layerData.data[stateCode];
+                        if (value !== null && value !== undefined) {
+                            const normalized = (value - layerData.min) / (layerData.max - layerData.min);
+                            
+                            if (index === 0) {
+                                // Second layer: border thickness
+                                combinedStyle.weight = 2 + Math.round(normalized * 4);
+                                combinedStyle.color = getColor(value, layerData.min, layerData.max, layerId);
+                            } else if (index === 1) {
+                                // Third layer: border style (dashed for high values)
+                                if (normalized > 0.6) {
+                                    combinedStyle.dashArray = '5,5';
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                if (!hasData) {
+                    noDataCount++;
+                }
+                
+                layer.setStyle(combinedStyle);
+            });
+            
+            console.log(`Styled ${styledCount} states with data, ${noDataCount} with no data`);
+            
+            // Force map to redraw
+            map.invalidateSize();
+        }
+        
+        function updateOpacity(layerId, opacity) {
+            if (activeLayers[layerId]) {
+                activeLayers[layerId].opacity = opacity / 100;
+                document.getElementById(`opacityValue_${layerId}`).textContent = opacity;
+                updateLayerStyles();
+            }
+        }
+        
+        function updateLegend(layerData) {
+            const legend = document.getElementById('legend');
+            const legendTitle = document.getElementById('legendTitle');
+            const legendMin = document.getElementById('legendMin');
+            const legendMax = document.getElementById('legendMax');
+            const legendGradient = document.querySelector('.legend-gradient');
+            
+            // Update gradient color based on layer
+            legendGradient.className = 'legend-gradient';
+            if (layerData.layer_id === 'population') {
+                legendGradient.classList.add('population');
+            } else if (layerData.layer_id === 'median_income') {
+                legendGradient.classList.add('income');
+            } else if (layerData.layer_id === 'education') {
+                legendGradient.classList.add('education');
+            } else if (layerData.layer_id === 'unemployment') {
+                legendGradient.classList.add('unemployment');
+            } else if (layerData.layer_id === 'poverty') {
+                legendGradient.classList.add('poverty');
+            } else if (layerData.layer_id === 'life_expectancy') {
+                legendGradient.classList.add('life_expectancy');
+            } else if (layerData.layer_id === 'home_ownership') {
+                legendGradient.classList.add('home_ownership');
+            }
+            
+            // If multiple layers, show combined legend
+            const activeCount = Object.keys(activeLayers).length;
+            if (activeCount > 1) {
+                legendTitle.textContent = `${activeCount} Layers Active`;
+                legendMin.textContent = 'Low';
+                legendMax.textContent = 'High';
+            } else {
+                legendTitle.textContent = layerData.layer_name;
+                legendMin.textContent = formatLegendValue(layerData.min, layerData.layer_id);
+                legendMax.textContent = formatLegendValue(layerData.max, layerData.layer_id);
+            }
+            legend.style.display = 'block';
+        }
+        
+        function formatLegendValue(value, layerId) {
+            if (layerId === 'population') {
+                return (value / 1000000).toFixed(1) + 'M';
+            } else if (layerId === 'median_income') {
+                return '$' + (value / 1000).toFixed(0) + 'k';
+            } else if (layerId === 'education' || layerId === 'unemployment' || layerId === 'poverty' || layerId === 'home_ownership') {
+                return value.toFixed(1) + '%';
+            } else if (layerId === 'life_expectancy') {
+                return value.toFixed(0) + 'y';
+            }
+            return value.toLocaleString();
+        }
+        
+        function clearAllLayers() {
+            // Uncheck all checkboxes
+            for (const layerId of Object.keys(GEO_STATISTICS_LAYERS || activeLayers)) {
+                const checkbox = document.getElementById(`layer_${layerId}`);
+                if (checkbox) {
+                    checkbox.checked = false;
+                    const opacityControl = document.getElementById(`opacity_${layerId}`);
+                    if (opacityControl) {
+                        opacityControl.style.display = 'none';
+                    }
+                }
+            }
+            activeLayers = {};
+            updateLayerStyles();
+            document.getElementById('legend').style.display = 'none';
+        }
+        
+        // Navigation between views
+        function switchView(viewName) {
+            // Update nav buttons
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Hide all views
+            document.querySelectorAll('.visualization-view').forEach(view => {
+                view.classList.remove('active');
+            });
+            
+            // Show selected view
+            if (viewName === 'map') {
+                document.getElementById('navMap').classList.add('active');
+                document.getElementById('mapView').classList.add('active');
+                // Ensure map is properly sized when switching back
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 100);
+            } else if (viewName === 'parallel') {
+                document.getElementById('navParallel').classList.add('active');
+                document.getElementById('parallelView').classList.add('active');
+                updateParallelCoordinates();
+            } else if (viewName === 'correlation') {
+                document.getElementById('navCorrelation').classList.add('active');
+                document.getElementById('correlationView').classList.add('active');
+                updateCorrelationAnalysis();
+            }
+        }
+        
+        // Parallel Coordinates Plot
+        function updateParallelCoordinates() {
+            const activeLayerIds = Object.keys(activeLayers);
+            
+            if (activeLayerIds.length < 2) {
+                document.getElementById('parallelCoordsPlot').innerHTML = 
+                    '<div style="padding: 40px; text-align: center; color: #7f8c8d;">' +
+                    '<p>Please select at least 2 data layers to view parallel coordinates</p>' +
+                    '</div>';
+                return;
+            }
+            
+            // Prepare data for parallel coordinates
+            const dimensions = [];
+            const stateData = [];
+            
+            // Get all states that have data for all selected layers
+            const allStates = new Set();
+            activeLayerIds.forEach(id => {
+                Object.keys(activeLayers[id].data).forEach(state => {
+                    allStates.add(state);
+                });
+            });
+            
+            const completeStates = Array.from(allStates).filter(state => {
+                return activeLayerIds.every(id => {
+                    const value = activeLayers[id].data[state];
+                    return value !== null && value !== undefined;
+                });
+            });
+            
+            if (completeStates.length === 0) {
+                document.getElementById('parallelCoordsPlot').innerHTML = 
+                    '<div style="padding: 40px; text-align: center; color: #7f8c8d;">' +
+                    '<p>No complete data available</p>' +
+                    '</div>';
+                return;
+            }
+            
+            // Create dimensions (axes) for each layer
+            activeLayerIds.forEach(layerId => {
+                const layer = activeLayers[layerId];
+                const values = completeStates.map(state => layer.data[state]);
+                const minVal = Math.min(...values);
+                const maxVal = Math.max(...values);
+                
+                dimensions.push({
+                    label: layer.name,
+                    values: values,
+                    range: [minVal, maxVal],
+                    tickformat: layerId === 'population' ? ',.0f' : 
+                               layerId === 'median_income' ? '$,.0f' :
+                               layerId === 'life_expectancy' ? '.1f' : '.1f'
+                });
+            });
+            
+            // Prepare data array for each state
+            completeStates.forEach((state, index) => {
+                const values = activeLayerIds.map(layerId => {
+                    return activeLayers[layerId].data[state];
+                });
+                
+                stateData.push({
+                    state: state,
+                    values: values,
+                    cluster: getStateCluster(state, activeLayerIds)
+                });
+            });
+            
+            // Determine color scheme
+            const colorBy = document.getElementById('colorBySelect').value;
+            let colorValues = [];
+            let colorScale = null;
+            
+            if (colorBy === 'cluster') {
+                // Color by cluster (high/medium/low)
+                colorValues = stateData.map(d => {
+                    if (d.cluster === 'high') return 2;
+                    if (d.cluster === 'medium') return 1;
+                    return 0;
+                });
+                colorScale = [
+                    [0, '#e74c3c'], // Low - Red
+                    [0.5, '#f39c12'], // Medium - Orange
+                    [1, '#27ae60'] // High - Green
+                ];
+            } else if (colorBy === 'state') {
+                // Color by state name (categorical)
+                const uniqueStates = [...new Set(completeStates)];
+                colorValues = stateData.map(d => uniqueStates.indexOf(d.state));
+                // Generate colors for each state
+                const colors = generateColors(uniqueStates.length);
+                colorScale = colors.map((color, i) => [i / (uniqueStates.length - 1), color]);
+            } else {
+                // No color (all gray)
+                colorValues = stateData.map(() => 0);
+                colorScale = [[0, '#95a5a6'], [1, '#95a5a6']];
+            }
+            
+            // Build data array for Plotly
+            const plotData = [{
+                type: 'parcoords',
+                line: {
+                    color: colorValues,
+                    colorscale: colorScale,
+                    showscale: colorBy !== 'none',
+                    colorbar: {
+                        title: colorBy === 'cluster' ? 'Cluster' : 
+                               colorBy === 'state' ? 'State' : '',
+                        tickvals: colorBy === 'cluster' ? [0, 1, 2] : [],
+                        ticktext: colorBy === 'cluster' ? ['Low', 'Medium', 'High'] : []
+                    }
+                },
+                dimensions: dimensions.map((dim, i) => ({
+                    label: dim.label,
+                    values: dim.values,
+                    range: dim.range,
+                    tickformat: dim.tickformat
+                }))
+            }];
+            
+            const layout = {
+                margin: { l: 60, r: 60, t: 40, b: 60 },
+                height: Math.max(600, completeStates.length * 10),
+                paper_bgcolor: 'white',
+                plot_bgcolor: 'white'
+            };
+            
+            Plotly.newPlot('parallelCoordsPlot', plotData, layout, {
+                responsive: true,
+                displayModeBar: true
+            });
+        }
+        
+        function getStateCluster(state, layerIds) {
+            // Get normalized values for this state across all layers
+            const profile = layerIds.map(id => {
+                const layer = activeLayers[id];
+                const value = layer.data[state];
+                if (value === null || value === undefined) return null;
+                return (value - layer.min) / (layer.max - layer.min);
+            }).filter(v => v !== null);
+            
+            if (profile.length === 0) return 'medium';
+            
+            const avg = profile.reduce((a, b) => a + b, 0) / profile.length;
+            
+            if (avg > 0.66) return 'high';
+            if (avg < 0.33) return 'low';
+            return 'medium';
+        }
+        
+        function generateColors(count) {
+            const colors = [];
+            const hueStep = 360 / count;
+            for (let i = 0; i < count; i++) {
+                const hue = i * hueStep;
+                colors.push(`hsl(${hue}, 70%, 50%)`);
+            }
+            return colors;
+        }
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            console.log('Initializing map...');
+            try {
+                // Ensure map is properly sized
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 100);
+                
+                await loadLayers();
+                const geoJson = await loadStatesGeoJSON();
+                
+                if (geoJson) {
+                    console.log('Map initialized successfully');
+                } else {
+                    console.error('Failed to initialize map');
+                }
+            } catch (error) {
+                console.error('Error during initialization:', error);
+            }
+        });
+    </script>
+</body>
+</html>
+
