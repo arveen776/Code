@@ -8,15 +8,12 @@ pygame.init()
 # Constants
 WIDTH, HEIGHT = 800, 600
 FPS = 60
-GRAVITY = 0.4
+GRAVITY = 0.5
 BOUNCE_DAMPING = 0.9  # Energy loss on bounce
 FRICTION = 0.99  # Ground friction
 PADDLE_SPEED = 8
 TARGET_WIDTH = 80
 TARGET_HEIGHT = 30
-FALLING_BRICK_SPEED = 2  # Pixels per frame
-FALLING_BRICK_WIDTH = 60
-FALLING_BRICK_HEIGHT = 25
 
 # Colors
 WHITE = (255, 255, 255)
@@ -136,21 +133,13 @@ class Paddle:
         self.width = width
         self.height = height
         self.speed = PADDLE_SPEED
-        self.previous_x = x  # Track previous position to calculate velocity
-        self.velocity_x = 0  # Paddle's horizontal velocity
     
     def update(self, mouse_x):
-        # Store previous position
-        self.previous_x = self.x
-        
         # Move paddle to follow mouse (centered on mouse position)
         target_x = mouse_x - self.width // 2
         
         # Keep paddle on screen
         self.x = max(0, min(WIDTH - self.width, target_x))
-        
-        # Calculate velocity based on movement
-        self.velocity_x = self.x - self.previous_x
     
     def draw(self, screen):
         pygame.draw.rect(screen, BLUE, (self.x, self.y, self.width, self.height))
@@ -171,139 +160,42 @@ class Paddle:
             hit_pos = (ball.x - self.x) / self.width  # 0 to 1
             ball.vx += (hit_pos - 0.5) * 5  # Add velocity based on hit position
             
-            # Apply paddle's movement velocity to the ball (add spin/control)
-            # Scale the paddle velocity for realistic effect
-            paddle_velocity_effect = self.velocity_x * 0.8  # 80% of paddle velocity transferred
-            ball.vx += paddle_velocity_effect
-            
-            # Clamp ball velocity to prevent it from going too fast
-            max_ball_speed = 12
-            ball.vx = max(-max_ball_speed, min(max_ball_speed, ball.vx))
-            
             return True
         return False
 
 class Target:
-    def __init__(self, x, y, width, height, points, hits_required=1):
+    def __init__(self, x, y, width, height, points):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
-        self.base_points = points  # Base points value
-        self.points = points * hits_required  # Total points = base * hits required
-        self.hits_required = hits_required
-        self.current_hits = 0
+        self.points = points
         self.hit = False
         self.color = random.choice([RED, GREEN, YELLOW, PURPLE, CYAN])
-        # Track which balls have hit this target to prevent multiple hits per collision
-        self.hit_balls = set()
     
     def draw(self, screen):
         if not self.hit:
-            # Show damage by tinting color based on hits taken
-            damage_ratio = self.current_hits / self.hits_required if self.hits_required > 0 else 0
-            if damage_ratio > 0:
-                # Tint toward red as it takes damage
-                r = min(255, int(self.color[0] + (255 - self.color[0]) * damage_ratio * 0.5))
-                g = max(0, int(self.color[1] * (1 - damage_ratio * 0.5)))
-                b = max(0, int(self.color[2] * (1 - damage_ratio * 0.5)))
-                draw_color = (r, g, b)
-            else:
-                draw_color = self.color
-            
-            pygame.draw.rect(screen, draw_color, (self.x, self.y, self.width, self.height))
+            pygame.draw.rect(screen, self.color, (self.x, self.y, self.width, self.height))
             pygame.draw.rect(screen, BLACK, (self.x, self.y, self.width, self.height), 2)
             
-            # Draw hits remaining or points if only 1 hit needed
+            # Draw points text
             font = pygame.font.Font(None, 20)
-            if self.hits_required > 1:
-                hits_text = f"{self.hits_required - self.current_hits}"
-                text = font.render(hits_text, True, WHITE)
-            else:
-                text = font.render(str(self.points), True, BLACK)
+            text = font.render(str(self.points), True, BLACK)
             text_rect = text.get_rect(center=(self.x + self.width // 2, self.y + self.height // 2))
             screen.blit(text, text_rect)
     
     def check_collision(self, ball):
         if not self.hit:
             # Check if ball collides with target
-            is_colliding = (ball.y - ball.radius <= self.y + self.height and 
-                          ball.y + ball.radius >= self.y and
-                          ball.x + ball.radius >= self.x and 
-                          ball.x - ball.radius <= self.x + self.width)
-            
-            if is_colliding:
-                # Determine which side of the rectangle the ball hit
-                # Calculate distances to each edge
-                dist_to_left = ball.x - self.x
-                dist_to_right = (self.x + self.width) - ball.x
-                dist_to_top = ball.y - self.y
-                dist_to_bottom = (self.y + self.height) - ball.y
+            if (ball.y - ball.radius <= self.y + self.height and 
+                ball.y + ball.radius >= self.y and
+                ball.x + ball.radius >= self.x and 
+                ball.x - ball.radius <= self.x + self.width):
                 
-                # Find the minimum distance (which edge is closest)
-                min_dist = min(dist_to_left, dist_to_right, dist_to_top, dist_to_bottom)
-                
-                # Determine normal vector based on closest edge
-                if min_dist == dist_to_left:
-                    normal_x, normal_y = -1, 0
-                elif min_dist == dist_to_right:
-                    normal_x, normal_y = 1, 0
-                elif min_dist == dist_to_top:
-                    normal_x, normal_y = 0, -1
-                else:  # dist_to_bottom
-                    normal_x, normal_y = 0, 1
-                
-                # Only count hit if ball hasn't hit this target yet (prevent multiple hits per collision)
-                if id(ball) not in self.hit_balls:
-                    # Check if ball has significant velocity (any direction)
-                    velocity_magnitude = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
-                    if velocity_magnitude > 0.3:  # Ball is moving with some speed
-                        self.current_hits += 1
-                        self.hit_balls.add(id(ball))
-                        
-                        # Check if broken
-                        if self.current_hits >= self.hits_required:
-                            self.hit = True
-                            # Calculate bounce
-                            dot_product = ball.vx * normal_x + ball.vy * normal_y
-                            ball.vx = ball.vx - 2 * dot_product * normal_x
-                            ball.vy = ball.vy - 2 * dot_product * normal_y
-                            # Apply damping
-                            ball.vx *= 0.8
-                            ball.vy *= 0.8
-                            # Push ball out
-                            if normal_x != 0:
-                                ball.x = self.x - ball.radius if normal_x < 0 else self.x + self.width + ball.radius
-                            elif normal_y != 0:
-                                ball.y = self.y - ball.radius if normal_y < 0 else self.y + self.height + ball.radius
-                            return self.points  # Return full points when broken
-                
-                # Always bounce ball away when colliding (proper physics reflection)
-                dot_product = ball.vx * normal_x + ball.vy * normal_y
-                
-                # Only bounce if ball is moving toward the surface
-                if dot_product < 0:
-                    # Reflect velocity along the normal
-                    ball.vx = ball.vx - 2 * dot_product * normal_x
-                    ball.vy = ball.vy - 2 * dot_product * normal_y
-                    # Apply damping
-                    ball.vx *= 0.8
-                    ball.vy *= 0.8
-                    
-                    # Push ball out of collision area to prevent getting stuck
-                    if normal_x != 0:  # Hit left or right edge
-                        if normal_x < 0:  # Hit left edge
-                            ball.x = self.x - ball.radius
-                        else:  # Hit right edge
-                            ball.x = self.x + self.width + ball.radius
-                    elif normal_y != 0:  # Hit top or bottom edge
-                        if normal_y < 0:  # Hit top edge
-                            ball.y = self.y - ball.radius
-                        else:  # Hit bottom edge
-                            ball.y = self.y + self.height + ball.radius
-            else:
-                # Ball is no longer colliding, remove from set so it can hit again if it comes back
-                self.hit_balls.discard(id(ball))
+                self.hit = True
+                # Bounce ball away
+                ball.vy = -abs(ball.vy) * 0.8
+                return self.points
         return 0
 
 class HardTarget:
@@ -425,151 +317,32 @@ class HardTarget:
                           ball.x - ball.radius <= self.x + self.width)
             
             if is_colliding:
-                # Determine which side of the rectangle the ball hit
-                # Calculate distances to each edge
-                dist_to_left = ball.x - self.x
-                dist_to_right = (self.x + self.width) - ball.x
-                dist_to_top = ball.y - self.y
-                dist_to_bottom = (self.y + self.height) - ball.y
+                # Only count hit if ball is moving toward target and hasn't been counted yet
+                # This prevents multiple hits while ball is stuck in collision area
+                if ball.vy > 0.5 and id(ball) not in self.hit_balls:  # Ball moving down with some speed
+                    self.current_hits += 1
+                    self.hit_balls.add(id(ball))
+                    
+                    # Check if broken
+                    if self.current_hits >= self.hits_required:
+                        self.broken = True
+                        return True  # Signal that a life should be added
                 
-                # Find the minimum distance (which edge is closest)
-                min_dist = min(dist_to_left, dist_to_right, dist_to_top, dist_to_bottom)
-                
-                # Determine normal vector based on closest edge
-                if min_dist == dist_to_left:
-                    normal_x, normal_y = -1, 0
-                elif min_dist == dist_to_right:
-                    normal_x, normal_y = 1, 0
-                elif min_dist == dist_to_top:
-                    normal_x, normal_y = 0, -1
-                else:  # dist_to_bottom
-                    normal_x, normal_y = 0, 1
-                
-                # Only count hit if ball hasn't been counted yet and is moving
-                if id(ball) not in self.hit_balls:
-                    # Check if ball has significant velocity (any direction)
-                    velocity_magnitude = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
-                    if velocity_magnitude > 0.3:  # Ball is moving with some speed
-                        self.current_hits += 1
-                        self.hit_balls.add(id(ball))
-                        
-                        # Check if broken
-                        if self.current_hits >= self.hits_required:
-                            self.broken = True
-                            return True  # Signal that a life should be added
-                
-                # Always bounce the ball away when colliding (handle all angles)
-                # Calculate dot product for reflection
-                dot_product = ball.vx * normal_x + ball.vy * normal_y
-                
-                # Reflect velocity along the normal (bounce)
-                ball.vx = ball.vx - 2 * dot_product * normal_x
-                ball.vy = ball.vy - 2 * dot_product * normal_y
-                
-                # Ensure minimum bounce velocity
-                min_bounce_speed = 2.0
-                current_speed = math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy)
-                if current_speed < min_bounce_speed:
-                    if current_speed > 0:
-                        scale = min_bounce_speed / current_speed
-                        ball.vx *= scale
-                        ball.vy *= scale
+                # Bounce ball away properly (only if ball is moving toward target)
+                if ball.vy > 0:  # Ball is moving down toward target
+                    # Full bounce with proper physics
+                    ball.vy = -abs(ball.vy) * 1.0  # Full bounce, no damping
+                    # Also push ball away from center of target slightly
+                    if ball.x < self.x + self.width // 2:
+                        ball.vx -= 1.5  # Push left
                     else:
-                        # If ball is stopped, give it a default bounce
-                        ball.vy = -min_bounce_speed
-                
-                # Push ball out of collision area to prevent getting stuck
-                if normal_x != 0:  # Hit left or right edge
-                    if normal_x < 0:  # Hit left edge
-                        ball.x = self.x - ball.radius
-                    else:  # Hit right edge
-                        ball.x = self.x + self.width + ball.radius
-                elif normal_y != 0:  # Hit top or bottom edge
-                    if normal_y < 0:  # Hit top edge
+                        ball.vx += 1.5  # Push right
+                    # Ensure ball is above target to prevent getting stuck
+                    if ball.y < self.y + self.height:
                         ball.y = self.y - ball.radius
-                    else:  # Hit bottom edge
-                        ball.y = self.y + self.height + ball.radius
             else:
                 # Ball is no longer colliding, remove from set so it can hit again if it comes back
                 self.hit_balls.discard(id(ball))
-        return False
-
-class FallingBrick:
-    def __init__(self, x, y, width, height, speed, points=50):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.speed = speed
-        self.points = points
-        self.broken = False
-        self.color = random.choice([RED, GREEN, BLUE, YELLOW, PURPLE, CYAN, ORANGE])
-        # Warning color when close to ground
-        self.warning_color = (255, 200, 0)  # Orange-yellow
-    
-    def update(self):
-        """Move brick downward"""
-        if not self.broken:
-            self.y += self.speed
-    
-    def draw(self, screen):
-        if not self.broken:
-            # Change color to warning when close to ground
-            ui_bar_height = 60
-            instructions_panel_height = 80
-            ground_y = HEIGHT - instructions_panel_height - 30  # Paddle area
-            distance_to_ground = ground_y - (self.y + self.height)
-            
-            # Use warning color if within 100 pixels of ground
-            draw_color = self.warning_color if distance_to_ground < 100 else self.color
-            
-            # Draw brick
-            pygame.draw.rect(screen, draw_color, (self.x, self.y, self.width, self.height))
-            pygame.draw.rect(screen, BLACK, (self.x, self.y, self.width, self.height), 2)
-            
-            # Draw points text
-            font = pygame.font.Font(None, 18)
-            text = font.render(str(self.points), True, WHITE)
-            text_rect = text.get_rect(center=(self.x + self.width // 2, self.y + self.height // 2))
-            screen.blit(text, text_rect)
-            
-            # Draw warning indicator if close to ground
-            if distance_to_ground < 100:
-                warning_font = pygame.font.Font(None, 14)
-                warning_text = warning_font.render("!", True, RED)
-                warning_rect = warning_text.get_rect(center=(self.x + self.width - 10, self.y + 8))
-                screen.blit(warning_text, warning_rect)
-    
-    def check_collision(self, ball):
-        """Check if ball hits the falling brick"""
-        if not self.broken:
-            if (ball.y - ball.radius <= self.y + self.height and 
-                ball.y + ball.radius >= self.y and
-                ball.x + ball.radius >= self.x and 
-                ball.x - ball.radius <= self.x + self.width):
-                
-                self.broken = True
-                # Bounce ball away
-                ball.vy = -abs(ball.vy) * 0.9
-                return self.points
-        return 0
-    
-    def check_paddle_collision(self, paddle):
-        """Check if falling brick hits the paddle (paddle breaks it)"""
-        if not self.broken:
-            if (self.y + self.height >= paddle.y and 
-                self.y <= paddle.y + paddle.height and
-                self.x + self.width >= paddle.x and 
-                self.x <= paddle.x + paddle.width):
-                
-                self.broken = True
-                return self.points
-        return 0
-    
-    def check_ground_hit(self, ground_y):
-        """Check if brick hit the ground (only if it didn't hit paddle)"""
-        if not self.broken and self.y + self.height >= ground_y:
-            return True
         return False
 
 def main():
@@ -596,12 +369,11 @@ def main():
     num_targets = 6
     target_spacing = WIDTH // (num_targets + 1)
     target_y = 80  # Moved down to avoid UI overlap
-    hits_required_per_round = 1  # Start with 1 hit required, increases each round
     for i in range(num_targets):
         x = target_spacing * (i + 1) - TARGET_WIDTH // 2
         y = target_y
-        base_points = (num_targets - i) * 10  # Base points for targets on the right
-        targets.append(Target(x, y, TARGET_WIDTH, TARGET_HEIGHT, base_points, hits_required_per_round))
+        points = (num_targets - i) * 10  # More points for targets on the right
+        targets.append(Target(x, y, TARGET_WIDTH, TARGET_HEIGHT, points))
     
     # Create hard target (special brick that gives lives)
     hard_target_hits_required = 8  # Starts at 8 hits (much harder), increases each time
@@ -626,12 +398,6 @@ def main():
     ball_spawn_interval = 180  # Spawn new ball every 3 seconds (180 frames at 60 FPS)
     balls_per_spawn = 1  # Number of balls to spawn at once (user controllable)
     
-    # Falling bricks
-    falling_bricks = []
-    falling_brick_spawn_timer = 0
-    falling_brick_spawn_interval = 300  # Spawn falling brick every 5 seconds (300 frames at 60 FPS)
-    max_falling_bricks = 3  # Maximum number of falling bricks at once
-    
     # Main game loop
     running = True
     
@@ -653,18 +419,14 @@ def main():
                     for _ in range(num_balls):
                         spawn_ball()
                     targets = []
-                    hits_required_per_round = 1  # Reset to 1 on manual restart
                     for i in range(num_targets):
                         x = target_spacing * (i + 1) - TARGET_WIDTH // 2
                         y = target_y
-                        base_points = (num_targets - i) * 10
-                        targets.append(Target(x, y, TARGET_WIDTH, TARGET_HEIGHT, base_points, hits_required_per_round))
+                        points = (num_targets - i) * 10
+                        targets.append(Target(x, y, TARGET_WIDTH, TARGET_HEIGHT, points))
                     # Reset hard target
                     hard_target_hits_required = 8
                     hard_target = HardTarget(hard_target_x, target_y + TARGET_HEIGHT + 10, TARGET_WIDTH, TARGET_HEIGHT, hard_target_hits_required)
-                    # Reset falling bricks
-                    falling_bricks = []
-                    falling_brick_spawn_timer = 0
                     ball_spawn_timer = 0
                 elif event.key == pygame.K_ESCAPE:
                     running = False
@@ -703,12 +465,6 @@ def main():
                 
                 # Check if ball hit hard target
                 hard_target.check_collision(ball)
-                
-                # Check if ball hit falling bricks
-                for falling_brick in falling_bricks:
-                    points = falling_brick.check_collision(ball)
-                    if points > 0:
-                        score += points
             
             # Update hard target animation
             hard_target.update_animation()
@@ -719,45 +475,6 @@ def main():
                 lives += 1
                 # Increase difficulty for next time (but don't respawn until round ends)
                 hard_target_hits_required += 1
-            
-            # Update falling bricks
-            for falling_brick in falling_bricks:
-                falling_brick.update()
-            
-            # Check if falling bricks hit the paddle (paddle breaks them)
-            for falling_brick in falling_bricks:
-                points = falling_brick.check_paddle_collision(paddle)
-                if points > 0:
-                    score += points  # Give points for breaking with paddle
-            
-            # Check if falling bricks hit the ground (only if they didn't hit paddle)
-            ground_y = paddle_y  # Ground is at paddle level
-            falling_bricks_to_remove = []
-            for falling_brick in falling_bricks:
-                if falling_brick.check_ground_hit(ground_y) and falling_brick not in falling_bricks_to_remove:
-                    falling_bricks_to_remove.append(falling_brick)
-                    lives -= 1
-                    if lives <= 0:
-                        game_over = True
-                        break  # Stop checking once game over
-            
-            # Remove bricks that hit ground
-            for brick in falling_bricks_to_remove:
-                if brick in falling_bricks:
-                    falling_bricks.remove(brick)
-            
-            # Remove broken falling bricks
-            falling_bricks = [brick for brick in falling_bricks if not brick.broken]
-            
-            # Spawn new falling bricks periodically
-            falling_brick_spawn_timer += 1
-            if falling_brick_spawn_timer >= falling_brick_spawn_interval and len(falling_bricks) < max_falling_bricks:
-                # Spawn from random x position at top
-                spawn_x = random.randint(20, WIDTH - FALLING_BRICK_WIDTH - 20)
-                spawn_y = 60  # Below UI bar
-                points = random.randint(30, 70)  # Random points
-                falling_bricks.append(FallingBrick(spawn_x, spawn_y, FALLING_BRICK_WIDTH, FALLING_BRICK_HEIGHT, FALLING_BRICK_SPEED, points))
-                falling_brick_spawn_timer = 0
             
             # Check collisions between balls
             for i in range(len(balls)):
@@ -792,16 +509,13 @@ def main():
             
             # Check if all targets are hit (win condition)
             if all(target.hit for target in targets):
-                # Increment difficulty for next round (more hits required)
-                hits_required_per_round += 1
-                
-                # Reset targets with increased difficulty and more points
+                # Reset targets with more points
                 targets = []
                 for i in range(num_targets):
                     x = target_spacing * (i + 1) - TARGET_WIDTH // 2
                     y = target_y
-                    base_points = (num_targets - i) * 10 + score // 100  # Increase base points over time
-                    targets.append(Target(x, y, TARGET_WIDTH, TARGET_HEIGHT, base_points, hits_required_per_round))
+                    points = (num_targets - i) * 10 + score // 100  # Increase points over time
+                    targets.append(Target(x, y, TARGET_WIDTH, TARGET_HEIGHT, points))
                 # Respawn hard target when targets reset (new round) - always respawn for new formation
                 hard_target = HardTarget(hard_target_x, target_y + TARGET_HEIGHT + 10, TARGET_WIDTH, TARGET_HEIGHT, hard_target_hits_required)
         
@@ -843,10 +557,6 @@ def main():
         
         # Draw hard target
         hard_target.draw(screen)
-        
-        # Draw falling bricks
-        for falling_brick in falling_bricks:
-            falling_brick.draw(screen)
         
         # Draw balls
         for ball in balls:
