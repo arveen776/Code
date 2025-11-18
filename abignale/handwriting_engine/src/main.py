@@ -13,7 +13,7 @@ def main():
         print("Run preprocess_glyphs.py first if you have raw glyphs in ../glyph_raw/")
         return
 
-    text = "1234"
+    text = "hey how are you doing today"
 
     img = render_text(text, glyphs, bg_color=(255, 255, 255, 255), line_spacing=15)
 
