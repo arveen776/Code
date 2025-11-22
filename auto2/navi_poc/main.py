@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import List
@@ -15,8 +16,29 @@ def record_flow() -> None:
     recorder = Recorder()
     input("Press Enter to start recording...")
     recorder.start()
-    input("Recording... perform your workflow, then press Enter to stop.")
-    print("Stopping recorder...")
+    print("Recording... perform your workflow, then press Enter or ESC to stop.")
+    
+    # Use a flag to track if Enter was pressed
+    enter_pressed = threading.Event()
+    
+    # Thread to handle Enter key input
+    def wait_for_enter() -> None:
+        input()  # This will block until Enter is pressed
+        enter_pressed.set()
+    
+    enter_thread = threading.Thread(target=wait_for_enter, daemon=True)
+    enter_thread.start()
+    
+    # Poll for either ESC (via should_stop) or Enter (via threading event)
+    while True:
+        if recorder.should_stop():
+            print("\nESC pressed. Stopping recorder...")
+            break
+        if enter_pressed.is_set():
+            print("\nStopping recorder...")
+            break
+        time.sleep(0.1)  # Small delay to avoid busy waiting
+    
     events = recorder.stop()
     if not events:
         print("No events captured. Try again.")
