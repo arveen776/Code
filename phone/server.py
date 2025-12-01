@@ -15,6 +15,7 @@ CORS(app)  # Enable CORS for cross-origin requests
 # Store pending commands
 pending_commands = []
 command_history = []
+command_id_counter = 0  # Unique ID counter
 
 # HTML template for the iPhone interface
 HTML_TEMPLATE = """
@@ -138,12 +139,62 @@ HTML_TEMPLATE = """
         .refresh-btn:hover {
             transform: rotate(180deg) scale(1.1);
         }
+        .auto-execute-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: #ccc;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .toggle-switch.active {
+            background: #667eea;
+        }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            top: 3px;
+            left: 3px;
+            transition: left 0.3s;
+        }
+        .toggle-switch.active::after {
+            left: 27px;
+        }
+        .auto-executing {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
+    <div class="auto-execute-toggle">
+        <span style="font-size: 14px; color: #333;">Auto Execute</span>
+        <div class="toggle-switch active" id="autoToggle" onclick="toggleAutoExecute()"></div>
+    </div>
     <div class="container">
         <h1>📱 Phone Commands</h1>
-        <div class="status" id="status">Waiting for commands...</div>
+        <div class="status" id="status">Waiting for commands... (Auto-execute: ON)</div>
         <div id="commands-container">
             <div class="no-commands">No pending commands</div>
         </div>
@@ -152,6 +203,34 @@ HTML_TEMPLATE = """
 
     <script>
         let commandIds = new Set();
+        let autoExecute = true; // Auto-execute enabled by default
+        let executingCommands = new Set(); // Track commands being executed
+
+        function toggleAutoExecute() {
+            autoExecute = !autoExecute;
+            const toggle = document.getElementById('autoToggle');
+            const status = document.getElementById('status');
+            
+            if (autoExecute) {
+                toggle.classList.add('active');
+                status.textContent = status.textContent.replace(/\(Auto-execute: (ON|OFF)\)/, '(Auto-execute: ON)');
+            } else {
+                toggle.classList.remove('active');
+                status.textContent = status.textContent.replace(/\(Auto-execute: (ON|OFF)\)/, '(Auto-execute: OFF)');
+            }
+            
+            // Save preference to localStorage
+            localStorage.setItem('autoExecute', autoExecute);
+        }
+
+        // Load auto-execute preference
+        const savedAutoExecute = localStorage.getItem('autoExecute');
+        if (savedAutoExecute !== null) {
+            autoExecute = savedAutoExecute === 'true';
+            if (!autoExecute) {
+                document.getElementById('autoToggle').classList.remove('active');
+            }
+        }
 
         function loadCommands() {
             fetch('/api/commands')
@@ -162,11 +241,13 @@ HTML_TEMPLATE = """
                     
                     if (data.commands.length === 0) {
                         container.innerHTML = '<div class="no-commands">No pending commands</div>';
-                        status.textContent = 'Waiting for commands...';
+                        const autoStatus = autoExecute ? '(Auto-execute: ON)' : '(Auto-execute: OFF)';
+                        status.textContent = `Waiting for commands... ${autoStatus}`;
                         return;
                     }
 
-                    status.textContent = `${data.commands.length} pending command(s)`;
+                    const autoStatus = autoExecute ? '(Auto-execute: ON)' : '(Auto-execute: OFF)';
+                    status.textContent = `${data.commands.length} pending command(s) ${autoStatus}`;
                     container.innerHTML = '';
 
                     data.commands.forEach(cmd => {
@@ -174,6 +255,14 @@ HTML_TEMPLATE = """
                             commandIds.add(cmd.id);
                             const card = createCommandCard(cmd);
                             container.appendChild(card);
+                            
+                            // Auto-execute if enabled and not already executing
+                            if (autoExecute && !executingCommands.has(cmd.id)) {
+                                // Small delay to ensure UI is updated
+                                setTimeout(() => {
+                                    executeCommand(cmd.id, true); // true = auto-execute
+                                }, 500);
+                            }
                         }
                     });
                 })
@@ -225,75 +314,121 @@ HTML_TEMPLATE = """
             return `/execute/${cmd.id}`;
         }
 
-        function executeCommand(cmdId) {
-            // Find the command
-            const cmd = Array.from(document.querySelectorAll('.command-card')).find(card => {
-                return card.id === `cmd-${cmdId}`;
-            });
-            
-            if (!cmd) {
-                alert('Command not found');
+        function executeCommand(cmdId, isAutoExecute = false) {
+            // Prevent duplicate execution
+            if (executingCommands.has(cmdId)) {
                 return;
             }
+            executingCommands.add(cmdId);
             
-            // Get command data from the stored commands
-            fetch(`/api/commands`)
-                .then(response => response.json())
-                .then(data => {
-                    const command = data.commands.find(c => c.id === cmdId);
-                    if (!command) {
-                        alert('Command not found');
-                        return;
-                    }
+            // Update UI to show executing state
+            const card = document.getElementById(`cmd-${cmdId}`);
+            if (card) {
+                card.classList.add('auto-executing');
+            }
+            
+                    // Get command data from the stored commands
+                    fetch(`/api/commands`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const command = data.commands.find(c => c.id === cmdId);
+                            if (!command) {
+                                executingCommands.delete(cmdId);
+                                // Command might have been executed already or doesn't exist
+                                // Remove from UI if it exists
+                                const card = document.getElementById(`cmd-${cmdId}`);
+                                if (card) {
+                                    card.remove();
+                                    commandIds.delete(cmdId);
+                                }
+                                if (!isAutoExecute) {
+                                    console.log('Command not found - may have been executed already');
+                                }
+                                return;
+                            }
                     
-                    // Try primary method (Shortcuts)
+                    // Get action URL
                     let actionUrl = getActionUrl(command);
                     
-                    // If shortcuts URL fails, try fallback
-                    if (!actionUrl) {
-                        actionUrl = getFallbackUrl(command);
-                    }
-                    
                     if (actionUrl) {
-                        // Method 1: Try opening in new window (for shortcuts://)
-                        try {
-                            window.location.href = actionUrl;
-                        } catch (e) {
-                            // Method 2: Try using window.open
-                            try {
-                                window.open(actionUrl, '_self');
-                            } catch (e2) {
-                                // Method 3: Create a link and click it
-                                const link = document.createElement('a');
-                                link.href = actionUrl;
-                                link.style.display = 'none';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                            }
-                        }
-                        
-                        // Mark as executed on server
-                        fetch(`/api/commands/${cmdId}/execute`, { method: 'POST' })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    // Remove from UI after a short delay
-                                    setTimeout(() => {
-                                        dismissCommand(cmdId);
-                                    }, 1000);
+                        // Execute the command
+                        // Use multiple methods to ensure it works
+                        const executeAction = () => {
+                            // Try iframe method first (most reliable for auto-execution)
+                            const iframe = document.createElement('iframe');
+                            iframe.style.display = 'none';
+                            iframe.src = actionUrl;
+                            document.body.appendChild(iframe);
+                            
+                            // Also try direct navigation as backup
+                            setTimeout(() => {
+                                try {
+                                    window.location.href = actionUrl;
+                                } catch (e) {
+                                    // Fallback: create and click link
+                                    const link = document.createElement('a');
+                                    link.href = actionUrl;
+                                    link.style.display = 'none';
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    setTimeout(() => document.body.removeChild(link), 100);
                                 }
+                            }, 100);
+                            
+                            // Remove iframe after a delay
+                            setTimeout(() => {
+                                if (iframe.parentNode) {
+                                    document.body.removeChild(iframe);
+                                }
+                            }, 1000);
+                        };
+                        
+                        executeAction();
+                        
+                        // Mark as executed on server (don't wait for response)
+                        fetch(`/api/commands/${cmdId}/execute`, { method: 'POST' })
+                            .then(response => {
+                                if (response.ok) {
+                                    return response.json();
+                                } else {
+                                    // Command might have been executed already
+                                    console.log('Command may have been executed already');
+                                    return { success: true };
+                                }
+                            })
+                            .then(data => {
+                                // Remove from UI after a delay
+                                setTimeout(() => {
+                                    const card = document.getElementById(`cmd-${cmdId}`);
+                                    if (card) {
+                                        card.remove();
+                                        commandIds.delete(cmdId);
+                                    }
+                                    executingCommands.delete(cmdId);
+                                    loadCommands(); // Refresh to update UI
+                                }, 1500);
                             })
                             .catch(error => {
                                 console.error('Error marking command as executed:', error);
+                                // Still remove from UI even if API call fails
+                                setTimeout(() => {
+                                    executingCommands.delete(cmdId);
+                                    loadCommands();
+                                }, 1500);
                             });
                     } else {
-                        alert('Could not generate action URL for this command. Please set up the iOS Shortcut first (see SHORTCUT_SETUP.md)');
+                        executingCommands.delete(cmdId);
+                        if (!isAutoExecute) {
+                            alert('Could not generate action URL for this command. Please set up the iOS Shortcut first (see SHORTCUT_SETUP.md)');
+                        }
                     }
                 })
                 .catch(error => {
                     console.error('Error executing command:', error);
-                    alert('Error executing command');
+                    executingCommands.delete(cmdId);
+                    if (!isAutoExecute) {
+                        alert('Error executing command');
+                    }
                 });
         }
 
@@ -312,11 +447,18 @@ HTML_TEMPLATE = """
                 });
         }
 
-        // Auto-refresh every 2 seconds
-        setInterval(loadCommands, 2000);
+        // Auto-refresh more frequently for auto-execution (every 1 second)
+        setInterval(loadCommands, 1000);
         
         // Load commands on page load
         loadCommands();
+        
+        // Also try to keep page active (prevents iOS from pausing JavaScript)
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                loadCommands();
+            }
+        });
     </script>
 </body>
 </html>
@@ -338,13 +480,17 @@ def get_commands():
 @app.route('/api/commands', methods=['POST'])
 def create_command():
     """Create a new command from the computer"""
+    global command_id_counter
     data = request.json
     
     if not data or 'type' not in data:
         return jsonify({'error': 'Invalid command format'}), 400
     
+    # Use a unique counter for IDs instead of len(pending_commands)
+    command_id_counter += 1
+    
     command = {
-        'id': len(pending_commands) + 1,
+        'id': command_id_counter,
         'type': data['type'],
         'data': data.get('data', {}),
         'timestamp': datetime.now().isoformat()
@@ -421,10 +567,17 @@ def execute_redirect(command_id):
     command = next((c for c in pending_commands if c['id'] == command_id), None)
     
     if not command:
+        # Command might have been executed already, try to redirect back
         return render_template_string("""
             <html><body>
                 <h1>Command not found</h1>
                 <p>This command may have already been executed or doesn't exist.</p>
+                <p><a href="/">Go back to command page</a></p>
+                <script>
+                    setTimeout(function() {
+                        window.location.href = "/";
+                    }, 2000);
+                </script>
             </body></html>
         """)
     
@@ -452,11 +605,11 @@ def execute_redirect(command_id):
         action_url = app_schemes.get(app_name, f"{app_name}://")
     elif command['type'] == 'shortcut':
         shortcut_name = command['data'].get('shortcut_name', '')
+        from urllib.parse import quote
         action_url = f"shortcuts://run-shortcut?name={quote(shortcut_name)}"
     
-    # Remove from pending
-    if command in pending_commands:
-        pending_commands.remove(command)
+    # Don't remove command here - let the API endpoint handle it
+    # This prevents race conditions
     
     if action_url:
         # Return HTML that immediately redirects
@@ -466,10 +619,17 @@ def execute_redirect(command_id):
         <head>
             <meta http-equiv="refresh" content="0;url={action_url}">
             <script>
+                // Mark as executed in background
+                fetch('/api/commands/{command_id}/execute', {{ method: 'POST' }})
+                    .catch(err => console.log('Mark executed:', err));
+                
+                // Redirect to action
                 window.location.href = "{action_url}";
+                
+                // Fallback: redirect back after delay
                 setTimeout(function() {{
                     window.location.href = "/";
-                }}, 1000);
+                }}, 2000);
             </script>
         </head>
         <body>

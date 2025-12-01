@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UT Interactive</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .question-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #555;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .response.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .response p {
+            margin: 0;
+            color: #333;
+            line-height: 1.6;
+            font-size: 1.05em;
+        }
+
+        .response.warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+
+        .response.error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+
+        .response.success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #restartBtn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 UT Interactive</h1>
+        
+        <div id="nameSection" class="question-section">
+            <label for="nameInput">What is your name?</label>
+            <input type="text" id="nameInput" placeholder="Enter your name">
+            <button onclick="handleName()">Submit</button>
+        </div>
+
+        <div id="question1Section" class="question-section hidden">
+            <label for="question1Input">Does sab have explosive scat?</label>
+            <input type="text" id="question1Input" placeholder="Enter yes or no">
+            <button onclick="handleQuestion1()">Submit</button>
+        </div>
+
+        <div id="question2Section" class="question-section hidden">
+            <label for="question2Input">How often do u scat per day?</label>
+            <input type="number" id="question2Input" placeholder="Enter a number">
+            <button onclick="handleQuestion2()">Submit</button>
+        </div>
+
+        <div id="response" class="response"></div>
+
+        <button id="restartBtn" class="hidden" onclick="restart()">Start Over</button>
+    </div>
+
+    <script>
+        let name = "";
+        let lieCount = 0;
+
+        function handleName() {
+            const nameInput = document.getElementById("nameInput");
+            name = nameInput.value.trim().toLowerCase();
+            const responseDiv = document.getElementById("response");
+
+            if (name === "sab") {
+                responseDiv.className = "response success show";
+                responseDiv.innerHTML = "<p>You are getting into U chicago</p>";
+                showRestart();
+            } else if (name === "soph") {
+                responseDiv.className = "response show";
+                responseDiv.innerHTML = "<p>Hello " + nameInput.value + "!</p>";
+                document.getElementById("nameSection").classList.add("hidden");
+                document.getElementById("question1Section").classList.remove("hidden");
+                responseDiv.classList.add("hidden");
+            } else {
+                responseDiv.className = "response show";
+                responseDiv.innerHTML = "<p>hello " + nameInput.value + " i know where u live</p>";
+                showRestart();
+            }
+        }
+
+        function handleQuestion1() {
+            const question1Input = document.getElementById("question1Input");
+            const answer = question1Input.value.trim().toLowerCase();
+            const responseDiv = document.getElementById("response");
+
+            if (answer === "yes") {
+                responseDiv.className = "response success show";
+                responseDiv.innerHTML = "<p>you r verry correct about that ans sab should go to dr wiesberg right away</p>";
+                document.getElementById("question1Section").classList.add("hidden");
+                document.getElementById("question2Section").classList.remove("hidden");
+                responseDiv.classList.add("hidden");
+            } else if (answer === "no") {
+                responseDiv.className = "response warning show";
+                responseDiv.innerHTML = "<p>you r very wrong and sab DOES have explosive scat because i saw her wiping it with a leaf in the forest once so she needs to go to dr wiesberg right away</p>";
+                document.getElementById("question1Section").classList.add("hidden");
+                document.getElementById("question2Section").classList.remove("hidden");
+                responseDiv.classList.add("hidden");
+            } else {
+                responseDiv.className = "response error show";
+                responseDiv.innerHTML = "<p>put yes or no please</p>";
+            }
+        }
+
+        function handleQuestion2() {
+            const question2Input = document.getElementById("question2Input");
+            const answer = parseInt(question2Input.value);
+            const responseDiv = document.getElementById("response");
+
+            if (isNaN(answer)) {
+                responseDiv.className = "response error show";
+                responseDiv.innerHTML = "<p>Please enter a valid number</p>";
+                return;
+            }
+
+            if (answer === 4) {
+                responseDiv.className = "response success show";
+                responseDiv.innerHTML = "<p>thank u for telling the truth, You are a explosive normal scatter</p><p>look to ur right now</p><p>thank u for playing hit thr bell icon AND DONT FORGET TO LIKE AND SUBSCRIBE</p><p>now leave me alone (ps sab is probally having to take a massive scat rn)</p>";
+                document.getElementById("question2Section").classList.add("hidden");
+                showRestart();
+            } else if (answer <= 3) {
+                lieCount++;
+                responseDiv.className = "response warning show";
+                let message = "We know you are lying, what is the real ammount";
+                
+                if (lieCount >= 2) {
+                    message += "<br><strong>STOP THE LYING RIGHT NOW</strong>";
+                }
+                if (lieCount >= 3) {
+                    message += "<br><strong>I WILL FIND YOU AND MAKE YOU TELL THE TRUTH</strong>";
+                }
+                responseDiv.innerHTML = "<p>" + message + "</p>";
+            } else if (answer >= 5) {
+                responseDiv.className = "response error show";
+                responseDiv.innerHTML = "<p>you scat too much and you are breaking down the ozone layer with your toxic scat fumes and carbon dioxide and killing the planet</p><p>look to ur right now</p><p>thank u for playing hit thr bell icon AND DONT FORGET TO LIKE AND SUBSCRIBE</p><p>now leave me alone (ps sab is probally having to take a massive scat rn)</p>";
+                document.getElementById("question2Section").classList.add("hidden");
+                showRestart();
+            } else {
+                responseDiv.className = "response error show";
+                responseDiv.innerHTML = "<p>WHAT IS WRONG WITH YOU?? YOU ARE KILLING THE PALENT YOU MURDDERER</p>";
+                document.getElementById("question2Section").classList.add("hidden");
+                showRestart();
+            }
+        }
+
+        function showRestart() {
+            document.getElementById("restartBtn").classList.remove("hidden");
+        }
+
+        function restart() {
+            location.reload();
+        }
+
+        // Allow Enter key to submit
+        document.getElementById("nameInput").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                handleName();
+            }
+        });
+
+        document.getElementById("question1Input").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                handleQuestion1();
+            }
+        });
+
+        document.getElementById("question2Input").addEventListener("keypress", function(e) {
+            if (e.key === "Enter") {
+                handleQuestion2();
+            }
+        });
+    </script>
+</body>
+</html>

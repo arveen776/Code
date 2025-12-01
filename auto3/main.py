@@ -10,8 +10,6 @@ from typing import List
 from recorder import Recorder
 from replayer import replay
 from workflows import add_workflow, find_best_workflow, load_workflows
-from action_analyzer import ActionAnalyzer
-from llm_helper import analyze_workflow_events, find_best_workflow_llm, check_ollama_connection
 
 
 def record_flow() -> None:
@@ -47,47 +45,10 @@ def record_flow() -> None:
         return
 
     print(f"Captured {len(events)} events.")
-    
-    # Analyze the workflow to understand what it does
-    print("\nAnalyzing workflow to understand actions...")
-    analyzer = ActionAnalyzer(use_llm=check_ollama_connection())
-    understanding = analyzer.understand_workflow(events)
-    
-    print(f"\nWorkflow Analysis:")
-    print(f"  Summary: {understanding.get('summary', 'Unknown')}")
-    print(f"  Applications: {', '.join(understanding.get('applications_used', ['Unknown']))}")
-    print(f"  Steps: {len(understanding.get('steps', []))}")
-    
-    # Auto-generate name and description using LLM if available
-    use_llm = check_ollama_connection()
-    if use_llm:
-        try:
-            print("\nGenerating intelligent description...")
-            auto_description = analyze_workflow_events(events)
-            print(f"  Suggested: {auto_description}")
-            
-            use_auto = input("\nUse auto-generated description? (y/n): ").strip().lower()
-            if use_auto == "y":
-                description = auto_description
-                # Generate name from description
-                from llm_helper import generate_workflow_name
-                name = generate_workflow_name(description)
-                print(f"  Auto-generated name: {name}")
-            else:
-                name = input("Name this workflow: ").strip()
-                description = input("Describe this workflow: ").strip()
-        except Exception as e:
-            print(f"  LLM analysis failed: {e}")
-            print("  Falling back to manual input...")
-            name = input("\nName this workflow: ").strip()
-            description = input("Describe this workflow: ").strip()
-    else:
-        name = input("\nName this workflow: ").strip()
-        description = input("Describe this workflow: ").strip()
-    
-    # Store the understanding with the workflow
-    workflow = add_workflow(name, description, events, understanding=understanding)
-    
+    name = input("Name this workflow: ").strip()
+    description = input("Describe this workflow: ").strip()
+
+    workflow = add_workflow(name, description, events)
     print(f"Saved workflow '{workflow['name']}' with id {workflow['id']}.")
 
 
@@ -127,34 +88,14 @@ def replay_by_command() -> None:
         return
 
     command = input("What do you want me to do? ").strip()
-    
-    # Try LLM-based matching first if available
-    use_llm = check_ollama_connection()
-    best = None
-    
-    if use_llm:
-        print("Using intelligent matching...")
-        result = find_best_workflow_llm(command, workflows)
-        if result:
-            best = result["workflow"]
-            print(f"Best match: {best['name']} — {best['description']}")
-            print(f"Confidence: {result.get('confidence', 0):.1%}")
-            if result.get('reasoning'):
-                print(f"Reasoning: {result['reasoning']}")
-        else:
-            print("No good match found with intelligent matching.")
-            print("Trying keyword matching...")
-            best = find_best_workflow(command, workflows)
-    else:
-        best = find_best_workflow(command, workflows)
-    
+    best = find_best_workflow(command, workflows)
     if not best:
         print("Could not find a matching workflow.")
         return
 
-    if not use_llm or not result:
-        print(f"Best match: {best['name']} — {best['description']}")
-    
+    print(
+        f"Best match: {best['name']} — {best['description']}",
+    )
     confirm = input("Run this workflow? (y/n): ").strip().lower()
     if confirm == "y":
         _run_workflow(best)
@@ -163,18 +104,7 @@ def replay_by_command() -> None:
 def _run_workflow(workflow: dict) -> None:
     print("Replaying in 3 seconds. Switch to the target window.")
     time.sleep(3)
-    
-    # Show workflow understanding if available
-    understanding = workflow.get("understanding", {})
-    if understanding:
-        print(f"\nExecuting: {understanding.get('summary', 'workflow')}")
-        apps = understanding.get("applications_used", [])
-        if apps:
-            print(f"Expected applications: {', '.join(apps)}")
-        print()
-    
-    # Use intelligent replay
-    replay(workflow.get("events", []), intelligent=True)
+    replay(workflow.get("events", []))
     print("Done.")
 
 
@@ -231,4 +161,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

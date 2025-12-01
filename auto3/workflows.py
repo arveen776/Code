@@ -27,15 +27,13 @@ def save_workflows(workflows: List[Workflow]) -> None:
     WORKFLOWS_PATH.write_text(json.dumps(workflows, indent=2), encoding="utf-8")
 
 
-def add_workflow(name: str, description: str, events: List[dict], understanding: Optional[Dict] = None) -> Workflow:
+def add_workflow(name: str, description: str, events: List[dict]) -> Workflow:
     workflow = {
         "id": str(uuid.uuid4()),
         "name": name.strip(),
         "description": description.strip(),
         "events": events,
     }
-    if understanding:
-        workflow["understanding"] = understanding
     workflows = load_workflows()
     workflows.append(workflow)
     save_workflows(workflows)
@@ -60,4 +58,3 @@ def find_best_workflow(command: str, workflows: List[Workflow]) -> Optional[Work
 
 def _tokenize(text: str) -> set[str]:
     return {word for word in text.lower().split() if word}
-

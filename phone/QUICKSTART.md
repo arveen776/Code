@@ -44,7 +44,9 @@ python client.py open_app messages
 send_command.bat open_app messages
 ```
 
-Then check your iPhone - you should see the command appear! Tap "Execute" to run it.
+**Auto-Execute is ON by default!** The command will execute automatically on your iPhone. You can toggle it off in the top-right corner of the web page.
+
+**Note**: For calls and messages, iOS will still show a confirmation dialog (security feature). Just tap "Call" or "Send" when it appears.
 
 ## Example Commands
 

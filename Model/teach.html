@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Questions</title>
+</head>
+<body>
+    <div id="content">
+        <h1>Questions</h1>
+        <div id="messages"></div>
+        <div id="input-section"></div>
+    </div>
+
+    <script>
+        let name = null;
+        let question = null;
+        let question2 = null;
+        let lieCount = 0;
+
+        function addMessage(text) {
+            const messagesDiv = document.getElementById('messages');
+            const p = document.createElement('p');
+            p.textContent = text;
+            messagesDiv.appendChild(p);
+        }
+
+        function askName() {
+            const inputSection = document.getElementById('input-section');
+            inputSection.innerHTML = `
+                <label>What is your name?</label>
+                <input type="text" id="name-input" />
+                <button id="name-submit">Submit</button>
+            `;
+            document.getElementById('name-submit').addEventListener('click', handleName);
+            document.getElementById('name-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') handleName();
+            });
+        }
+
+        function handleName() {
+            name = document.getElementById('name-input').value;
+            
+            if (name === "sab") {
+                addMessage("You are getting into U chicago");
+            } else {
+                addMessage("hello " + name + " i know where u live");
+            }
+
+            if (name === "soph") {
+                askQuestion1();
+            }
+        }
+
+        function askQuestion1() {
+            const inputSection = document.getElementById('input-section');
+            inputSection.innerHTML = `
+                <label>does sab have explosive scat?</label>
+                <input type="text" id="question-input" />
+                <button id="question-submit">Submit</button>
+            `;
+            document.getElementById('question-submit').addEventListener('click', handleQuestion1);
+            document.getElementById('question-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') handleQuestion1();
+            });
+        }
+
+        function handleQuestion1() {
+            question = document.getElementById('question-input').value.toLowerCase();
+            
+            if (question === "yes") {
+                addMessage("you r verry correct about that ans sab should go to dr wiesberg right away");
+                lieCount = 0;
+                askQuestion2();
+            } else if (question === "no") {
+                addMessage("you r very wrong and sab DOES have explosive scat because i saw her wiping it with a leaf in the forest once so she needs to go to dr wiesberg right away");
+                lieCount = 0;
+                askQuestion2();
+            } else {
+                addMessage("put yes or no please");
+                askQuestion1();
+            }
+        }
+
+        function askQuestion2() {
+            const inputSection = document.getElementById('input-section');
+            inputSection.innerHTML = `
+                <label>how often do u scat per day?</label>
+                <input type="number" id="question2-input" />
+                <button id="question2-submit">Submit</button>
+            `;
+            document.getElementById('question2-submit').addEventListener('click', handleQuestion2);
+            document.getElementById('question2-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') handleQuestion2();
+            });
+        }
+
+        function handleQuestion2() {
+            question2 = parseInt(document.getElementById('question2-input').value);
+            
+            if (question2 === 4) {
+                addMessage("You are a normal scatter");
+                addMessage("look to ur right now");
+            } else if (question2 <= 3) {
+                lieCount++;
+                addMessage("We know you are lying, what is the real ammount");
+                addMessage("look to ur right now");
+                if (lieCount >= 2) {
+                    addMessage("STOP THE LYING RIGHT NOW");
+                }
+                askQuestion2();
+            } else if (question2 >= 5) {
+                addMessage("you scat too much and you are breaking down the ozone layer with your toxic scat fumes and carbon dioxide and killing the planet");
+                addMessage("look to ur right now");
+            } else {
+                addMessage("WHAT IS WRONG WITH YOU?? YOU ARE KILLING THE PALENT YOU MURDDERER");
+            }
+        }
+
+        // Start the questions when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            askName();
+        });
+    </script>
+</body>
+</html>
+

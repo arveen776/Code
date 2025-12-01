@@ -7,8 +7,10 @@ A simple system to send commands from your Windows 11 computer to your iPhone 15
 - 🚀 Send commands from your computer to your iPhone
 - 📱 Beautiful web interface on your iPhone
 - 🔄 Real-time command updates
+- ⚡ **Auto-execute commands automatically** (NEW!)
 - 📞 Make calls, send messages, open apps
-- ⚡ Run iOS Shortcuts
+- 🎯 Run iOS Shortcuts
+- 🔔 Toggle auto-execution on/off
 
 ## Setup Instructions
 
@@ -89,7 +91,8 @@ python client.py shortcut "Shortcut Name"
 1. **Server** (`server.py`): Runs on your Windows computer, receives commands and serves a web interface
 2. **Client** (`client.py`): Sends commands from your computer to the server
 3. **iPhone Interface**: A web page on your iPhone that displays pending commands
-4. **Execution**: When you tap "Execute" on your iPhone, it opens the appropriate URL scheme or Shortcut
+4. **Auto-Execution**: Commands automatically execute when received (can be toggled on/off)
+5. **Manual Execution**: You can also manually tap "Execute" if auto-execute is off
 
 ## iOS URL Schemes
 
