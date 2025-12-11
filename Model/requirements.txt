@@ -1,0 +1,17 @@
+# Gravity Simulation GUI - Requirements
+# 
+# This project uses only Python standard library modules:
+# - tkinter (GUI framework - included with Python)
+# - math (mathematical functions - standard library)
+#
+# No additional pip packages are required!
+#
+# Note: On some Linux distributions, tkinter may need to be installed separately:
+#   Ubuntu/Debian: sudo apt-get install python3-tk
+#   Fedora: sudo dnf install python3-tkinter
+#   Arch: sudo pacman -S tk
+
+# If you want to add future dependencies, add them below:
+# numpy>=1.20.0
+# matplotlib>=3.3.0
+

@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cool Animation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+        }
+
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .gradient-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            z-index: 0;
+            transition: background 1s ease;
+        }
+
+        .theme-selector {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            flex-wrap: wrap;
+            max-width: 90vw;
+            justify-content: center;
+        }
+
+        .theme-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .theme-btn:hover {
+            transform: scale(1.1);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .theme-btn.active {
+            border-color: white;
+            border-width: 3px;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        .theme-hint {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            color: white;
+            font-size: 0.85rem;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            opacity: 0.7;
+        }
+
+        .mode-selector {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+
+        .mode-btn {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mode-btn:hover {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .mode-btn.active {
+            border-color: white;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+        }
+
+        .mode-dropdown {
+            position: absolute;
+            top: calc(100% + 10px);
+            left: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 10px;
+            min-width: 200px;
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .mode-dropdown.show {
+            display: flex;
+        }
+
+        .mode-option {
+            padding: 12px 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .mode-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .mode-option.active {
+            background: rgba(255, 255, 255, 0.2);
+            font-weight: 600;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="gradient-bg" id="gradientBg"></div>
+    <canvas id="particles"></canvas>
+    
+    <div class="theme-hint">
+        Press 1-9, 0, Q, W, E, R for themes
+    </div>
+    
+    <div class="mode-selector">
+        <div class="mode-btn active" id="modeBtn">
+            <span>Mode: <span id="currentModeName">Normal</span></span>
+            <span style="font-size: 0.7rem;">▼</span>
+        </div>
+        <div class="mode-dropdown" id="modeDropdown">
+            <div class="mode-option active" data-mode="normal">Normal</div>
+        </div>
+    </div>
+    
+    <div class="theme-selector">
+        <div class="theme-btn active" data-theme="0" style="background: linear-gradient(135deg, #667eea, #764ba2);" title="Purple (1)"></div>
+        <div class="theme-btn" data-theme="1" style="background: linear-gradient(135deg, #00c9ff, #92fe9d);" title="Ocean (2)"></div>
+        <div class="theme-btn" data-theme="2" style="background: linear-gradient(135deg, #f093fb, #f5576c);" title="Sunset (3)"></div>
+        <div class="theme-btn" data-theme="3" style="background: linear-gradient(135deg, #4facfe, #00f2fe);" title="Sky (4)"></div>
+        <div class="theme-btn" data-theme="4" style="background: linear-gradient(135deg, #43e97b, #38f9d7);" title="Forest (5)"></div>
+        <div class="theme-btn" data-theme="5" style="background: linear-gradient(135deg, #fa709a, #fee140);" title="Neon (6)"></div>
+        <div class="theme-btn" data-theme="6" style="background: linear-gradient(135deg, #0c0c0c, #1a1a2e);" title="Midnight (7)"></div>
+        <div class="theme-btn" data-theme="7" style="background: linear-gradient(135deg, #1a0033, #4a0080);" title="Cosmic (8)"></div>
+        <div class="theme-btn" data-theme="8" style="background: linear-gradient(135deg, #000000, #1a1a1a);" title="Void (9)"></div>
+        <div class="theme-btn" data-theme="9" style="background: linear-gradient(135deg, #000428, #004e92);" title="Abyss (0)"></div>
+        <div class="theme-btn" data-theme="10" style="background: linear-gradient(135deg, #1a1a1a, #4a0e4e);" title="Eclipse (Q)"></div>
+        <div class="theme-btn" data-theme="11" style="background: linear-gradient(135deg, #2d1b69, #11998e);" title="Mystic (W)"></div>
+        <div class="theme-btn" data-theme="12" style="background: linear-gradient(135deg, #0f0c29, #302b63);" title="Obsidian (E)"></div>
+        <div class="theme-btn" data-theme="13" style="background: linear-gradient(135deg, #1e1e1e, #2d2d2d);" title="Shadow (R)"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('particles');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const particles = [];
+        const particleCount = 80;
+        const mouse = { x: null, y: null };
+        
+        // Theme definitions
+        const themes = [
+            {
+                name: 'Purple',
+                gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+                hueStart: 200,
+                hueRange: 60,
+                connectionColor: '255, 255, 255'
+            },
+            {
+                name: 'Ocean',
+                gradient: 'linear-gradient(135deg, #00c9ff 0%, #92fe9d 50%, #00c9ff 100%)',
+                hueStart: 180,
+                hueRange: 40,
+                connectionColor: '0, 201, 255'
+            },
+            {
+                name: 'Sunset',
+                gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #fa709a 100%)',
+                hueStart: 320,
+                hueRange: 40,
+                connectionColor: '255, 87, 108'
+            },
+            {
+                name: 'Sky',
+                gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 50%, #4facfe 100%)',
+                hueStart: 200,
+                hueRange: 30,
+                connectionColor: '79, 172, 254'
+            },
+            {
+                name: 'Forest',
+                gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 50%, #43e97b 100%)',
+                hueStart: 150,
+                hueRange: 30,
+                connectionColor: '67, 233, 123'
+            },
+            {
+                name: 'Neon',
+                gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 50%, #fa709a 100%)',
+                hueStart: 330,
+                hueRange: 50,
+                connectionColor: '250, 112, 154'
+            },
+            {
+                name: 'Midnight',
+                gradient: 'linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%)',
+                hueStart: 220,
+                hueRange: 30,
+                connectionColor: '100, 150, 255'
+            },
+            {
+                name: 'Cosmic',
+                gradient: 'linear-gradient(135deg, #1a0033 0%, #4a0080 50%, #6a0dad 100%)',
+                hueStart: 270,
+                hueRange: 40,
+                connectionColor: '150, 0, 255'
+            },
+            {
+                name: 'Void',
+                gradient: 'linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #0d0d0d 100%)',
+                hueStart: 200,
+                hueRange: 20,
+                connectionColor: '200, 200, 255'
+            },
+            {
+                name: 'Abyss',
+                gradient: 'linear-gradient(135deg, #000428 0%, #004e92 50%, #000428 100%)',
+                hueStart: 210,
+                hueRange: 25,
+                connectionColor: '0, 150, 255'
+            },
+            {
+                name: 'Eclipse',
+                gradient: 'linear-gradient(135deg, #1a1a1a 0%, #4a0e4e 50%, #2d1b1b 100%)',
+                hueStart: 0,
+                hueRange: 30,
+                connectionColor: '255, 100, 50'
+            },
+            {
+                name: 'Mystic',
+                gradient: 'linear-gradient(135deg, #2d1b69 0%, #11998e 50%, #2d1b69 100%)',
+                hueStart: 280,
+                hueRange: 50,
+                connectionColor: '100, 255, 200'
+            },
+            {
+                name: 'Obsidian',
+                gradient: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)',
+                hueStart: 240,
+                hueRange: 30,
+                connectionColor: '150, 150, 255'
+            },
+            {
+                name: 'Shadow',
+                gradient: 'linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 50%, #1a1a1a 100%)',
+                hueStart: 180,
+                hueRange: 15,
+                connectionColor: '150, 255, 255'
+            }
+        ];
+        
+        let currentTheme = 0;
+        
+        // Interaction modes
+        const modes = {
+            normal: {
+                name: 'Normal',
+                update: function(particle) {
+                    // Calculate distance to mouse for size and attraction
+                    let mouseDistance = Infinity;
+                    if (mouse.x !== null && mouse.y !== null) {
+                        const dx = mouse.x - particle.x;
+                        const dy = mouse.y - particle.y;
+                        mouseDistance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        // Grow particles when near mouse
+                        if (mouseDistance < 250) {
+                            const growthFactor = 1 + (250 - mouseDistance) / 250 * 3; // Grow up to 4x size
+                            particle.size = particle.baseSize * growthFactor;
+                        } else {
+                            // Gradually return to base size
+                            particle.size += (particle.baseSize - particle.size) * 0.1;
+                        }
+                    } else {
+                        // Gradually return to base size when mouse leaves
+                        particle.size += (particle.baseSize - particle.size) * 0.1;
+                    }
+
+                    particle.x += particle.speedX;
+                    particle.y += particle.speedY;
+
+                    if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
+                    if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
+
+                    // Attract to mouse with repulsion at close range
+                    if (mouse.x !== null && mouse.y !== null && mouseDistance < 300) {
+                        const dx = mouse.x - particle.x;
+                        const dy = mouse.y - particle.y;
+                        
+                        // Attraction zone (far from mouse)
+                        if (mouseDistance > 80) {
+                            const force = (300 - mouseDistance) / 300;
+                            const attractionStrength = 0.008 * force; // Reduced strength
+                            particle.speedX += dx * attractionStrength;
+                            particle.speedY += dy * attractionStrength;
+                        } else {
+                            // Repulsion zone (close to mouse) - prevents tight clumping
+                            const repulsionStrength = (80 - mouseDistance) / 80 * 0.02;
+                            particle.speedX -= dx * repulsionStrength;
+                            particle.speedY -= dy * repulsionStrength;
+                        }
+                    }
+
+                    // Particle-to-particle repulsion to form structures
+                    for (let other of particles) {
+                        if (other === particle) continue;
+                        
+                        const dx = particle.x - other.x;
+                        const dy = particle.y - other.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        // Repel if too close (prevents overlap)
+                        if (distance > 0 && distance < (particle.size + other.size) * 1.5) {
+                            const repulsionForce = ((particle.size + other.size) * 1.5 - distance) / ((particle.size + other.size) * 1.5);
+                            const repulsionStrength = 0.01 * repulsionForce;
+                            particle.speedX += (dx / distance) * repulsionStrength;
+                            particle.speedY += (dy / distance) * repulsionStrength;
+                        }
+                    }
+
+                    // Limit speed (less damping for more responsiveness)
+                    particle.speedX *= 0.95;
+                    particle.speedY *= 0.95;
+                }
+            },
+            blackhole: {
+                name: 'Black Hole',
+                update: function(particle) {
+                    // Calculate distance to mouse (black hole center)
+                    let mouseDistance = Infinity;
+                    if (mouse.x !== null && mouse.y !== null) {
+                        const dx = mouse.x - particle.x;
+                        const dy = mouse.y - particle.y;
+                        mouseDistance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        // Count nearby particles to simulate increasing mass
+                        let nearbyMass = 0;
+                        for (let other of particles) {
+                            if (other === particle) continue;
+                            const otherDx = mouse.x - other.x;
+                            const otherDy = mouse.y - other.y;
+                            const otherDistance = Math.sqrt(otherDx * otherDx + otherDy * otherDy);
+                            if (otherDistance < 200) {
+                                nearbyMass += 1;
+                            }
+                        }
+                        
+                        // Event horizon - particles shrink and get pulled in strongly
+                        const eventHorizon = 30;
+                        const influenceRadius = 400;
+                        
+                        if (mouseDistance < eventHorizon) {
+                            // Inside event horizon - particles shrink and are consumed
+                            particle.size = Math.max(0.1, particle.size * 0.95);
+                            // Very strong pull
+                            const dx = mouse.x - particle.x;
+                            const dy = mouse.y - particle.y;
+                            const pullStrength = 0.1;
+                            particle.speedX += dx * pullStrength;
+                            particle.speedY += dy * pullStrength;
+                        } else if (mouseDistance < influenceRadius) {
+                            // Within influence - inverse square law attraction (stronger as closer)
+                            const dx = mouse.x - particle.x;
+                            const dy = mouse.y - particle.y;
+                            
+                            // Inverse square law: force increases dramatically as distance decreases
+                            // Add mass effect - more particles nearby = stronger gravity
+                            const baseForce = 1 / (mouseDistance * mouseDistance);
+                            const massMultiplier = 1 + (nearbyMass * 0.1);
+                            const attractionStrength = baseForce * 500 * massMultiplier;
+                            
+                            particle.speedX += dx * attractionStrength;
+                            particle.speedY += dy * attractionStrength;
+                            
+                            // Particles shrink slightly as they approach (spaghettification effect)
+                            const shrinkFactor = 1 - (influenceRadius - mouseDistance) / influenceRadius * 0.3;
+                            particle.size = particle.baseSize * shrinkFactor;
+                            
+                            // Add slight spiral effect (angular momentum)
+                            const angle = Math.atan2(dy, dx) + Math.PI / 2;
+                            const spiralStrength = 0.0005;
+                            particle.speedX += Math.cos(angle) * spiralStrength * mouseDistance;
+                            particle.speedY += Math.sin(angle) * spiralStrength * mouseDistance;
+                        } else {
+                            // Far away - gradually return to normal size
+                            particle.size += (particle.baseSize - particle.size) * 0.1;
+                        }
+                    } else {
+                        // Gradually return to base size when mouse leaves
+                        particle.size += (particle.baseSize - particle.size) * 0.1;
+                    }
+
+                    particle.x += particle.speedX;
+                    particle.y += particle.speedY;
+
+                    // Bounce off walls
+                    if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
+                    if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
+
+                    // Less damping for black hole mode (particles maintain momentum)
+                    particle.speedX *= 0.98;
+                    particle.speedY *= 0.98;
+                }
+            },
+            galaxy: {
+                name: 'Galaxy',
+                update: function(particle) {
+                    if (mouse.x === null || mouse.y === null) {
+                        // No mouse - particles drift naturally
+                        particle.x += particle.speedX;
+                        particle.y += particle.speedY;
+                        particle.speedX *= 0.99;
+                        particle.speedY *= 0.99;
+                        
+                        if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
+                        if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
+                        return;
+                    }
+                    
+                    const dx = mouse.x - particle.x;
+                    const dy = mouse.y - particle.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Calculate angle from center
+                    const angle = Math.atan2(dy, dx);
+                    
+                    // Orbital mechanics: particles want to maintain stable orbits
+                    // Orbital velocity decreases with distance (like real planets)
+                    const minOrbitRadius = 60;
+                    const maxOrbitRadius = 400;
+                    
+                    if (distance < minOrbitRadius) {
+                        // Too close - push outward to maintain orbit (stronger push)
+                        const pushStrength = (minOrbitRadius - distance) / minOrbitRadius * 0.15;
+                        particle.speedX -= Math.cos(angle) * pushStrength;
+                        particle.speedY -= Math.sin(angle) * pushStrength;
+                    } else if (distance > maxOrbitRadius) {
+                        // Too far - pull inward
+                        const pullStrength = (distance - maxOrbitRadius) / 100 * 0.02;
+                        particle.speedX += Math.cos(angle) * pullStrength;
+                        particle.speedY += Math.sin(angle) * pullStrength;
+                    }
+                    
+                    // Gravitational attraction (weaker than black hole, maintains orbits)
+                    if (distance > 0) {
+                        const gravityStrength = 0.3 / (distance * 0.1 + 1); // Inverse relationship
+                        particle.speedX += dx * gravityStrength * 0.001;
+                        particle.speedY += dy * gravityStrength * 0.001;
+                    }
+                    
+                    // Orbital velocity - particles should move perpendicular to radius
+                    // This creates circular/spiral motion
+                    const currentRadialSpeed = (dx * particle.speedX + dy * particle.speedY) / distance;
+                    const desiredOrbitalSpeed = Math.sqrt(0.3 / (distance * 0.1 + 1)) * 0.5;
+                    
+                    // Calculate perpendicular direction (tangent to orbit)
+                    const tangentX = -dy / distance;
+                    const tangentY = dx / distance;
+                    
+                    // Add orbital velocity component (bounded to prevent excessive speeds)
+                    const orbitalBoost = 0.02;
+                    const maxOrbitalBoost = 0.5; // Limit orbital velocity addition
+                    const orbitalVelX = tangentX * Math.min(desiredOrbitalSpeed * orbitalBoost, maxOrbitalBoost);
+                    const orbitalVelY = tangentY * Math.min(desiredOrbitalSpeed * orbitalBoost, maxOrbitalBoost);
+                    particle.speedX += orbitalVelX;
+                    particle.speedY += orbitalVelY;
+                    
+                    // Reduce radial motion to encourage orbital motion
+                    if (distance > 0) {
+                        const radialDamping = 0.95;
+                        const radialX = (dx / distance) * currentRadialSpeed;
+                        const radialY = (dy / distance) * currentRadialSpeed;
+                        particle.speedX -= radialX * (1 - radialDamping);
+                        particle.speedY -= radialY * (1 - radialDamping);
+                    }
+                    
+                    // Particle interactions - repulsion at close range, weak attraction at medium range
+                    for (let other of particles) {
+                        if (other === particle) continue;
+                        
+                        const otherDx = other.x - particle.x;
+                        const otherDy = other.y - particle.y;
+                        const otherDistance = Math.sqrt(otherDx * otherDx + otherDy * otherDy);
+                        
+                        if (otherDistance > 0) {
+                            const minSeparation = (particle.size + other.size) * 2.5;
+                            
+                            if (otherDistance < minSeparation) {
+                                // Repulsion when too close - prevents clumping
+                                const repulsionStrength = (minSeparation - otherDistance) / minSeparation * 0.02;
+                                particle.speedX -= (otherDx / otherDistance) * repulsionStrength;
+                                particle.speedY -= (otherDy / otherDistance) * repulsionStrength;
+                            } else if (otherDistance < 100) {
+                                // Weak attraction at medium range (forms structures without clumping)
+                                const clusterStrength = (100 - otherDistance) / 100 * 0.0003;
+                                particle.speedX += (otherDx / otherDistance) * clusterStrength;
+                                particle.speedY += (otherDy / otherDistance) * clusterStrength;
+                            }
+                        }
+                    }
+                    
+                    // Update position
+                    particle.x += particle.speedX;
+                    particle.y += particle.speedY;
+                    
+                    // Bounce off walls
+                    if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -0.8;
+                    if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -0.8;
+                    
+                    // Size based on distance from center (like density waves in galaxies)
+                    // Keep particles visible - don't shrink too much
+                    if (distance < 400) {
+                        const sizeVariation = Math.sin(distance * 0.03 + Date.now() * 0.001) * 0.3 + 1;
+                        particle.size = Math.max(particle.baseSize * 0.7, particle.baseSize * sizeVariation);
+                    } else {
+                        particle.size += (particle.baseSize - particle.size) * 0.1;
+                    }
+                    
+                    // Damping to maintain stable orbits
+                    particle.speedX *= 0.995;
+                    particle.speedY *= 0.995;
+                    
+                    // Safety: Limit maximum speed in galaxy mode to prevent runaway velocities
+                    const maxSpeed = 8;
+                    const currentSpeed = Math.sqrt(particle.speedX * particle.speedX + particle.speedY * particle.speedY);
+                    if (currentSpeed > maxSpeed) {
+                        particle.speedX = (particle.speedX / currentSpeed) * maxSpeed;
+                        particle.speedY = (particle.speedY / currentSpeed) * maxSpeed;
+                    }
+                }
+            },
+            vortex: {
+                name: 'Vortex',
+                update: function(particle) {
+                    if (mouse.x === null || mouse.y === null) {
+                        // No mouse - particles drift naturally
+                        particle.x += particle.speedX;
+                        particle.y += particle.speedY;
+                        particle.speedX *= 0.98;
+                        particle.speedY *= 0.98;
+                        
+                        if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -0.8;
+                        if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -0.8;
+                        return;
+                    }
+                    
+                    const dx = mouse.x - particle.x;
+                    const dy = mouse.y - particle.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance > 0) {
+                        // Calculate angle from center
+                        const angle = Math.atan2(dy, dx);
+                        
+                        // Vortex effect: particles spiral around the mouse
+                        // Create tangential (perpendicular) velocity for rotation
+                        const tangentX = -dy / distance;
+                        const tangentY = dx / distance;
+                        
+                        // Vortex strength increases as particles get closer
+                        const vortexRadius = 400;
+                        if (distance < vortexRadius) {
+                            // Angular velocity (rotation speed) - faster closer to center
+                            const angularVelocity = (vortexRadius - distance) / vortexRadius * 2;
+                            
+                            // Add rotational motion (tangential component)
+                            particle.speedX += tangentX * angularVelocity * 0.03;
+                            particle.speedY += tangentY * angularVelocity * 0.03;
+                            
+                            // Radial attraction (pulls particles toward center)
+                            const radialAttraction = (vortexRadius - distance) / vortexRadius * 0.01;
+                            particle.speedX += (dx / distance) * radialAttraction;
+                            particle.speedY += (dy / distance) * radialAttraction;
+                            
+                            // Centrifugal force - particles want to move outward at high speeds
+                            const currentRadialSpeed = (dx * particle.speedX + dy * particle.speedY) / distance;
+                            if (currentRadialSpeed < 0 && distance < 50) {
+                                // Too close and moving inward - push outward
+                                const centrifugalForce = 0.05;
+                                particle.speedX -= (dx / distance) * centrifugalForce;
+                                particle.speedY -= (dy / distance) * centrifugalForce;
+                            }
+                            
+                            // Size increases in the vortex (like particles being stretched)
+                            const sizeBoost = 1 + (vortexRadius - distance) / vortexRadius * 1.5;
+                            particle.size = particle.baseSize * sizeBoost;
+                        } else {
+                            // Far from vortex - gradually return to normal
+                            particle.size += (particle.baseSize - particle.size) * 0.1;
+                        }
+                    }
+                    
+                    // Fluid-like interactions between particles
+                    for (let other of particles) {
+                        if (other === particle) continue;
+                        
+                        const otherDx = other.x - particle.x;
+                        const otherDy = other.y - particle.y;
+                        const otherDistance = Math.sqrt(otherDx * otherDx + otherDy * otherDy);
+                        
+                        if (otherDistance > 0 && otherDistance < 100) {
+                            // Viscous drag - particles near each other slow down (fluid resistance)
+                            const dragStrength = (100 - otherDistance) / 100 * 0.001;
+                            const relativeSpeedX = particle.speedX - other.speedX;
+                            const relativeSpeedY = particle.speedY - other.speedY;
+                            particle.speedX -= relativeSpeedX * dragStrength;
+                            particle.speedY -= relativeSpeedY * dragStrength;
+                            
+                            // Weak repulsion to prevent overlap
+                            if (otherDistance < (particle.size + other.size) * 2) {
+                                const repulsionStrength = ((particle.size + other.size) * 2 - otherDistance) / ((particle.size + other.size) * 2) * 0.015;
+                                particle.speedX -= (otherDx / otherDistance) * repulsionStrength;
+                                particle.speedY -= (otherDy / otherDistance) * repulsionStrength;
+                            }
+                        }
+                    }
+                    
+                    // Update position
+                    particle.x += particle.speedX;
+                    particle.y += particle.speedY;
+                    
+                    // Bounce off walls with energy loss
+                    if (particle.x < 0 || particle.x > canvas.width) {
+                        particle.speedX *= -0.7;
+                        particle.x = Math.max(0, Math.min(canvas.width, particle.x));
+                    }
+                    if (particle.y < 0 || particle.y > canvas.height) {
+                        particle.speedY *= -0.7;
+                        particle.y = Math.max(0, Math.min(canvas.height, particle.y));
+                    }
+                    
+                    // Viscous damping (fluid resistance)
+                    particle.speedX *= 0.99;
+                    particle.speedY *= 0.99;
+                }
+            }
+        };
+        
+        let currentMode = 'normal';
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.baseSize = Math.random() * 3 + 1;
+                this.size = this.baseSize;
+                this.speedX = Math.random() * 2 - 1;
+                this.speedY = Math.random() * 2 - 1;
+                this.updateColor();
+            }
+            
+            updateColor() {
+                const theme = themes[currentTheme];
+                const hue = theme.hueStart + Math.random() * theme.hueRange;
+                // Dark themes get brighter, more vibrant particles
+                const isDark = currentTheme >= 6;
+                const lightness = isDark ? 55 + Math.random() * 25 : 70;
+                const saturation = isDark ? 75 + Math.random() * 25 : 70;
+                this.color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            }
+
+            update() {
+                // Use the current mode's update function
+                if (modes[currentMode] && modes[currentMode].update) {
+                    modes[currentMode].update(this);
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Create particles
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+
+        // Mouse tracking
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.x;
+            mouse.y = e.y;
+        });
+
+        window.addEventListener('mouseleave', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Animation loop
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw connections
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // Different connection styles for different modes
+                    let maxDistance = 150;
+                    let baseOpacity = 0.3;
+                    let lineWidth = 1.5;
+                    
+                    if (currentMode === 'galaxy') {
+                        // In galaxy mode, show connections more prominently to reveal spiral structure
+                        maxDistance = 120;
+                        baseOpacity = 0.4;
+                        lineWidth = 1;
+                    }
+
+                    if (distance < maxDistance) {
+                        const theme = themes[currentTheme];
+                        const opacity = baseOpacity * (1 - distance / maxDistance);
+                        ctx.strokeStyle = `rgba(${theme.connectionColor}, ${opacity})`;
+                        ctx.lineWidth = lineWidth;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Draw black hole indicator in black hole mode
+            if (currentMode === 'blackhole' && mouse.x !== null && mouse.y !== null) {
+                // Draw event horizon (dark circle)
+                const eventHorizon = 30;
+                const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, eventHorizon);
+                gradient.addColorStop(0, 'rgba(0, 0, 0, 0.9)');
+                gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.7)');
+                gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(mouse.x, mouse.y, eventHorizon, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw accretion disk (glowing ring)
+                const ringRadius = eventHorizon + 10;
+                const ringGradient = ctx.createRadialGradient(mouse.x, mouse.y, ringRadius - 5, mouse.x, mouse.y, ringRadius + 5);
+                ringGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+                ringGradient.addColorStop(0.5, 'rgba(150, 150, 255, 0.5)');
+                ringGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                
+                ctx.fillStyle = ringGradient;
+                ctx.beginPath();
+                ctx.arc(mouse.x, mouse.y, ringRadius + 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Draw galaxy center indicator in galaxy mode
+            if (currentMode === 'galaxy' && mouse.x !== null && mouse.y !== null) {
+                // Draw galactic nucleus (bright center)
+                const nucleusRadius = 15;
+                const nucleusGradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, nucleusRadius);
+                nucleusGradient.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
+                nucleusGradient.addColorStop(0.5, 'rgba(255, 200, 100, 0.6)');
+                nucleusGradient.addColorStop(1, 'rgba(255, 150, 50, 0)');
+                
+                ctx.fillStyle = nucleusGradient;
+                ctx.beginPath();
+                ctx.arc(mouse.x, mouse.y, nucleusRadius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw spiral arm hints (subtle orbital rings)
+                const time = Date.now() * 0.0005;
+                for (let ring = 0; ring < 3; ring++) {
+                    const ringRadius = 80 + ring * 60;
+                    const opacity = 0.1;
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(mouse.x, mouse.y, ringRadius, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw vortex center indicator in vortex mode
+            if (currentMode === 'vortex' && mouse.x !== null && mouse.y !== null) {
+                const time = Date.now() * 0.002;
+                const vortexRadius = 50;
+                
+                // Draw swirling center (animated spiral)
+                ctx.save();
+                ctx.translate(mouse.x, mouse.y);
+                ctx.rotate(time);
+                
+                // Draw spiral arms
+                for (let arm = 0; arm < 3; arm++) {
+                    const armAngle = (arm * Math.PI * 2 / 3);
+                    ctx.strokeStyle = `rgba(150, 200, 255, 0.4)`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    for (let r = 5; r < vortexRadius; r += 2) {
+                        const angle = armAngle + (r / vortexRadius) * Math.PI * 2;
+                        const x = Math.cos(angle) * r;
+                        const y = Math.sin(angle) * r;
+                        if (r === 5) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    }
+                    ctx.stroke();
+                }
+                
+                ctx.restore();
+                
+                // Draw center core
+                const coreGradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 20);
+                coreGradient.addColorStop(0, 'rgba(100, 150, 255, 0.6)');
+                coreGradient.addColorStop(1, 'rgba(100, 150, 255, 0)');
+                ctx.fillStyle = coreGradient;
+                ctx.beginPath();
+                ctx.arc(mouse.x, mouse.y, 20, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Update and draw particles
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        // Theme switching
+        function setTheme(index) {
+            if (index < 0 || index >= themes.length) return;
+            
+            currentTheme = index;
+            const theme = themes[index];
+            const gradientBg = document.getElementById('gradientBg');
+            gradientBg.style.background = theme.gradient;
+            
+            // Update particle colors
+            particles.forEach(particle => {
+                particle.updateColor();
+            });
+            
+            // Update active button
+            document.querySelectorAll('.theme-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === index);
+            });
+        }
+        
+        // Theme button clicks
+        document.querySelectorAll('.theme-btn').forEach((btn, index) => {
+            btn.addEventListener('click', () => setTheme(index));
+        });
+        
+        // Keyboard shortcuts (1-9, 0, Q, W, E, R)
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            let themeIndex = -1;
+            
+            if (key >= '1' && key <= '9') {
+                themeIndex = parseInt(key) - 1;
+            } else if (key === '0') {
+                themeIndex = 9; // Abyss
+            } else if (key === 'q') {
+                themeIndex = 10; // Eclipse
+            } else if (key === 'w') {
+                themeIndex = 11; // Mystic
+            } else if (key === 'e') {
+                themeIndex = 12; // Obsidian
+            } else if (key === 'r') {
+                themeIndex = 13; // Shadow
+            }
+            
+            if (themeIndex >= 0 && themeIndex < themes.length) {
+                setTheme(themeIndex);
+            }
+        });
+
+        // Mode selector functionality
+        const modeBtn = document.getElementById('modeBtn');
+        const modeDropdown = document.getElementById('modeDropdown');
+        const currentModeName = document.getElementById('currentModeName');
+        
+        // Toggle dropdown
+        modeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            modeDropdown.classList.toggle('show');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!modeBtn.contains(e.target) && !modeDropdown.contains(e.target)) {
+                modeDropdown.classList.remove('show');
+            }
+        });
+        
+        // Populate mode dropdown
+        function populateModeDropdown() {
+            modeDropdown.innerHTML = '';
+            Object.keys(modes).forEach(modeKey => {
+                const mode = modes[modeKey];
+                const option = document.createElement('div');
+                option.className = 'mode-option';
+                option.textContent = mode.name;
+                option.dataset.mode = modeKey;
+                if (modeKey === currentMode) {
+                    option.classList.add('active');
+                }
+                option.addEventListener('click', () => {
+                    setMode(modeKey);
+                    modeDropdown.classList.remove('show');
+                });
+                modeDropdown.appendChild(option);
+            });
+        }
+        
+        // Set mode function
+        let previousMode = currentMode;
+        function setMode(modeKey) {
+            if (!modes[modeKey]) return;
+            
+            // If switching modes, reset particle states to prevent velocity carryover
+            if (previousMode !== modeKey) {
+                particles.forEach(particle => {
+                    // Normalize velocities to prevent extreme speeds from previous mode
+                    const currentSpeed = Math.sqrt(particle.speedX * particle.speedX + particle.speedY * particle.speedY);
+                    const maxInitialSpeed = 3; // Maximum speed for fresh start
+                    
+                    if (currentSpeed > maxInitialSpeed) {
+                        // Scale down excessive velocities
+                        const scale = maxInitialSpeed / currentSpeed;
+                        particle.speedX *= scale;
+                        particle.speedY *= scale;
+                    }
+                    
+                    // Reset size to base size
+                    particle.size = particle.baseSize;
+                });
+            }
+            
+            previousMode = currentMode;
+            currentMode = modeKey;
+            currentModeName.textContent = modes[modeKey].name;
+            
+            // Update active state
+            document.querySelectorAll('.mode-option').forEach(option => {
+                option.classList.toggle('active', option.dataset.mode === modeKey);
+            });
+        }
+        
+        // Initialize mode dropdown
+        populateModeDropdown();
+
+        animate();
+    </script>
+</body>
+</html>

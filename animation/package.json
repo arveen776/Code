@@ -1,0 +1,14 @@
+{
+  "name": "cool-animation",
+  "version": "1.0.0",
+  "description": "A simple and cool animated web page",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["animation", "particles", "interactive"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {}
+}
+
