@@ -94,9 +94,43 @@
             opacity: 0.7;
         }
 
+        .toggle-3d {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-3d:hover {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .toggle-3d.active {
+            border-color: #4CAF50;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+        }
+
         .mode-selector {
             position: fixed;
             top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+
+        .effects-selector {
+            position: fixed;
+            top: 80px;
             left: 20px;
             z-index: 100;
         }
@@ -165,6 +199,101 @@
             font-weight: 600;
         }
 
+        .controls-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 200px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-label {
+            color: white;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .control-value {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .intensity-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: center;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .intensity-input:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .intensity-input:focus {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .intensity-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .particle-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .particle-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+            flex: 1;
+            text-align: center;
+        }
+
+        .particle-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .particle-btn:active {
+            transform: translateY(0);
+        }
+
         @keyframes gradientShift {
             0% {
                 background-position: 0% 50%;
@@ -184,6 +313,32 @@
     
     <div class="theme-hint">
         Press 1-9, 0, Q, W, E, R for themes
+    </div>
+    
+    <div class="toggle-3d" id="toggle3D">
+        3D: OFF
+    </div>
+    
+    <div class="controls-panel">
+        <div class="control-group">
+            <div class="control-label">
+                <span>Intensity</span>
+            </div>
+            <input type="number" class="intensity-input" id="intensityInput" min="0.1" step="0.1" value="1.0" placeholder="1.0">
+            <div style="text-align: center; color: rgba(255, 255, 255, 0.6); font-size: 0.75rem; margin-top: 4px;">
+                Min: 0.1 (no max limit)
+            </div>
+        </div>
+        <div class="control-group">
+            <div class="control-label">
+                <span>Particles</span>
+                <span class="control-value" id="particleCountValue">80</span>
+            </div>
+            <div class="particle-controls">
+                <button class="particle-btn" id="decreaseParticles">-</button>
+                <button class="particle-btn" id="increaseParticles">+</button>
+            </div>
+        </div>
     </div>
     
     <div class="mode-selector">
@@ -221,8 +376,20 @@
         canvas.height = window.innerHeight;
 
         const particles = [];
-        const particleCount = 80;
-        const mouse = { x: null, y: null };
+        let particleCount = 80;
+        let intensityFactor = 1.0;
+        const mouse = { x: null, y: null, z: null };
+        
+        // 3D system
+        let is3D = false;
+        let cameraRotationX = 0;
+        let cameraRotationY = 0;
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        const cameraDistance = 1000; // Distance from camera to center
+        let centerX = canvas.width / 2;
+        let centerY = canvas.height / 2;
         
         // Theme definitions
         const themes = [
@@ -333,12 +500,13 @@
             normal: {
                 name: 'Normal',
                 update: function(particle) {
-                    // Calculate distance to mouse for size and attraction
+                    // Calculate distance to mouse for size and attraction (3D)
                     let mouseDistance = Infinity;
                     if (mouse.x !== null && mouse.y !== null) {
                         const dx = mouse.x - particle.x;
                         const dy = mouse.y - particle.y;
-                        mouseDistance = Math.sqrt(dx * dx + dy * dy);
+                        const dz = (mouse.z !== null ? mouse.z : 0) - particle.z;
+                        mouseDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                         
                         // Grow particles when near mouse
                         if (mouseDistance < 250) {
@@ -353,70 +521,110 @@
                         particle.size += (particle.baseSize - particle.size) * 0.1;
                     }
 
-                    particle.x += particle.speedX;
-                    particle.y += particle.speedY;
-
-                    if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
-                    if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
-
                     // Attract to mouse with repulsion at close range
                     if (mouse.x !== null && mouse.y !== null && mouseDistance < 300) {
                         const dx = mouse.x - particle.x;
                         const dy = mouse.y - particle.y;
+                        const dz = (mouse.z !== null ? mouse.z : 0) - particle.z;
                         
                         // Attraction zone (far from mouse)
                         if (mouseDistance > 80) {
                             const force = (300 - mouseDistance) / 300;
-                            const attractionStrength = 0.008 * force; // Reduced strength
-                            particle.speedX += dx * attractionStrength;
-                            particle.speedY += dy * attractionStrength;
+                            const attractionStrength = 0.008 * force * intensityFactor; // Reduced strength
+                            if (mouseDistance > 0) {
+                                particle.speedX += (dx / mouseDistance) * attractionStrength;
+                                particle.speedY += (dy / mouseDistance) * attractionStrength;
+                                particle.speedZ += (dz / mouseDistance) * attractionStrength;
+                            }
                         } else {
                             // Repulsion zone (close to mouse) - prevents tight clumping
-                            const repulsionStrength = (80 - mouseDistance) / 80 * 0.02;
-                            particle.speedX -= dx * repulsionStrength;
-                            particle.speedY -= dy * repulsionStrength;
+                            const repulsionStrength = (80 - mouseDistance) / 80 * 0.02 * intensityFactor;
+                            if (mouseDistance > 0) {
+                                particle.speedX -= (dx / mouseDistance) * repulsionStrength;
+                                particle.speedY -= (dy / mouseDistance) * repulsionStrength;
+                                particle.speedZ -= (dz / mouseDistance) * repulsionStrength;
+                            }
                         }
                     }
 
-                    // Particle-to-particle repulsion to form structures
+                    // Particle-to-particle repulsion to form structures (3D)
                     for (let other of particles) {
                         if (other === particle) continue;
                         
                         const dx = particle.x - other.x;
                         const dy = particle.y - other.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const dz = particle.z - other.z;
+                        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                         
                         // Repel if too close (prevents overlap)
                         if (distance > 0 && distance < (particle.size + other.size) * 1.5) {
                             const repulsionForce = ((particle.size + other.size) * 1.5 - distance) / ((particle.size + other.size) * 1.5);
-                            const repulsionStrength = 0.01 * repulsionForce;
+                            const repulsionStrength = 0.01 * repulsionForce * intensityFactor;
                             particle.speedX += (dx / distance) * repulsionStrength;
                             particle.speedY += (dy / distance) * repulsionStrength;
+                            particle.speedZ += (dz / distance) * repulsionStrength;
                         }
                     }
 
                     // Limit speed (less damping for more responsiveness)
                     particle.speedX *= 0.95;
                     particle.speedY *= 0.95;
+                    particle.speedZ *= 0.95;
+                    
+                    // Update position after all forces are applied
+                    particle.x += particle.speedX;
+                    particle.y += particle.speedY;
+                    particle.z += particle.speedZ;
+                    
+                    // Boundary handling - different for 2D vs 3D (normal mode)
+                    if (is3D) {
+                        const boundary = 500;
+                        if (Math.abs(particle.x) > boundary) {
+                            particle.speedX *= -1;
+                            particle.x = Math.sign(particle.x) * boundary;
+                        }
+                        if (Math.abs(particle.y) > boundary) {
+                            particle.speedY *= -1;
+                            particle.y = Math.sign(particle.y) * boundary;
+                        }
+                        if (Math.abs(particle.z) > boundary) {
+                            particle.speedZ *= -1;
+                            particle.z = Math.sign(particle.z) * boundary;
+                        }
+                    } else {
+                        // 2D mode - use canvas boundaries
+                        const maxX = canvas.width / 2;
+                        const maxY = canvas.height / 2;
+                        if (Math.abs(particle.x) > maxX) {
+                            particle.speedX *= -1;
+                            particle.x = Math.sign(particle.x) * maxX;
+                        }
+                        if (Math.abs(particle.y) > maxY) {
+                            particle.speedY *= -1;
+                            particle.y = Math.sign(particle.y) * maxY;
+                        }
+                    }
                 }
             },
             blackhole: {
                 name: 'Black Hole',
                 update: function(particle) {
-                    // Calculate distance to mouse (black hole center)
+                    // Calculate distance to mouse (black hole center) - 3D
                     let mouseDistance = Infinity;
                     if (mouse.x !== null && mouse.y !== null) {
                         const dx = mouse.x - particle.x;
                         const dy = mouse.y - particle.y;
-                        mouseDistance = Math.sqrt(dx * dx + dy * dy);
+                        const dz = (mouse.z !== null ? mouse.z : 0) - particle.z;
+                        mouseDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                         
-                        // Count nearby particles to simulate increasing mass
+                        // Count nearby particles to simulate increasing mass (3D)
                         let nearbyMass = 0;
                         for (let other of particles) {
                             if (other === particle) continue;
                             const otherDx = mouse.x - other.x;
                             const otherDy = mouse.y - other.y;
-                            const otherDistance = Math.sqrt(otherDx * otherDx + otherDy * otherDy);
+                            const otherDz = (mouse.z !== null ? mouse.z : 0) - other.z;
+                            const otherDistance = Math.sqrt(otherDx * otherDx + otherDy * otherDy + otherDz * otherDz);
                             if (otherDistance < 200) {
                                 nearbyMass += 1;
                             }
@@ -429,35 +637,46 @@
                         if (mouseDistance < eventHorizon) {
                             // Inside event horizon - particles shrink and are consumed
                             particle.size = Math.max(0.1, particle.size * 0.95);
-                            // Very strong pull
+                            // Very strong pull (3D)
                             const dx = mouse.x - particle.x;
                             const dy = mouse.y - particle.y;
-                            const pullStrength = 0.1;
-                            particle.speedX += dx * pullStrength;
-                            particle.speedY += dy * pullStrength;
+                            const dz = (mouse.z !== null ? mouse.z : 0) - particle.z;
+                            const pullStrength = 0.1 * intensityFactor;
+                            if (mouseDistance > 0) {
+                                particle.speedX += (dx / mouseDistance) * pullStrength;
+                                particle.speedY += (dy / mouseDistance) * pullStrength;
+                                particle.speedZ += (dz / mouseDistance) * pullStrength;
+                            }
                         } else if (mouseDistance < influenceRadius) {
-                            // Within influence - inverse square law attraction (stronger as closer)
+                            // Within influence - inverse square law attraction (stronger as closer) - 3D
                             const dx = mouse.x - particle.x;
                             const dy = mouse.y - particle.y;
+                            const dz = (mouse.z !== null ? mouse.z : 0) - particle.z;
                             
                             // Inverse square law: force increases dramatically as distance decreases
                             // Add mass effect - more particles nearby = stronger gravity
                             const baseForce = 1 / (mouseDistance * mouseDistance);
                             const massMultiplier = 1 + (nearbyMass * 0.1);
-                            const attractionStrength = baseForce * 500 * massMultiplier;
+                            const attractionStrength = baseForce * 500 * massMultiplier * intensityFactor;
                             
-                            particle.speedX += dx * attractionStrength;
-                            particle.speedY += dy * attractionStrength;
+                            if (mouseDistance > 0) {
+                                particle.speedX += (dx / mouseDistance) * attractionStrength;
+                                particle.speedY += (dy / mouseDistance) * attractionStrength;
+                                particle.speedZ += (dz / mouseDistance) * attractionStrength;
+                            }
                             
                             // Particles shrink slightly as they approach (spaghettification effect)
                             const shrinkFactor = 1 - (influenceRadius - mouseDistance) / influenceRadius * 0.3;
                             particle.size = particle.baseSize * shrinkFactor;
                             
-                            // Add slight spiral effect (angular momentum)
+                            // Add slight spiral effect (angular momentum) - 3D
                             const angle = Math.atan2(dy, dx) + Math.PI / 2;
-                            const spiralStrength = 0.0005;
+                            const spiralStrength = 0.0005 * intensityFactor;
                             particle.speedX += Math.cos(angle) * spiralStrength * mouseDistance;
                             particle.speedY += Math.sin(angle) * spiralStrength * mouseDistance;
+                            // Z-axis rotation component
+                            const zAngle = Math.atan2(dz, Math.sqrt(dx * dx + dy * dy));
+                            particle.speedZ += Math.sin(zAngle) * spiralStrength * mouseDistance * 0.5;
                         } else {
                             // Far away - gradually return to normal size
                             particle.size += (particle.baseSize - particle.size) * 0.1;
@@ -469,14 +688,41 @@
 
                     particle.x += particle.speedX;
                     particle.y += particle.speedY;
+                    particle.z += particle.speedZ;
 
-                    // Bounce off walls
-                    if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
-                    if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
+                    // Boundary handling - different for 2D vs 3D (black hole mode)
+                    if (is3D) {
+                        const boundary = 500;
+                        if (Math.abs(particle.x) > boundary) {
+                            particle.speedX *= -1;
+                            particle.x = Math.sign(particle.x) * boundary;
+                        }
+                        if (Math.abs(particle.y) > boundary) {
+                            particle.speedY *= -1;
+                            particle.y = Math.sign(particle.y) * boundary;
+                        }
+                        if (Math.abs(particle.z) > boundary) {
+                            particle.speedZ *= -1;
+                            particle.z = Math.sign(particle.z) * boundary;
+                        }
+                    } else {
+                        // 2D mode - use canvas boundaries
+                        const maxX = canvas.width / 2;
+                        const maxY = canvas.height / 2;
+                        if (Math.abs(particle.x) > maxX) {
+                            particle.speedX *= -1;
+                            particle.x = Math.sign(particle.x) * maxX;
+                        }
+                        if (Math.abs(particle.y) > maxY) {
+                            particle.speedY *= -1;
+                            particle.y = Math.sign(particle.y) * maxY;
+                        }
+                    }
 
                     // Less damping for black hole mode (particles maintain momentum)
                     particle.speedX *= 0.98;
                     particle.speedY *= 0.98;
+                    particle.speedZ *= 0.98;
                 }
             },
             galaxy: {
@@ -486,92 +732,129 @@
                         // No mouse - particles drift naturally
                         particle.x += particle.speedX;
                         particle.y += particle.speedY;
+                        particle.z += particle.speedZ;
                         particle.speedX *= 0.99;
                         particle.speedY *= 0.99;
+                        particle.speedZ *= 0.99;
                         
-                        if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
-                        if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
+                        // Boundary handling
+                        if (is3D) {
+                            const boundary = 500;
+                            if (Math.abs(particle.x) > boundary) {
+                                particle.speedX *= -1;
+                                particle.x = Math.sign(particle.x) * boundary;
+                            }
+                            if (Math.abs(particle.y) > boundary) {
+                                particle.speedY *= -1;
+                                particle.y = Math.sign(particle.y) * boundary;
+                            }
+                            if (Math.abs(particle.z) > boundary) {
+                                particle.speedZ *= -1;
+                                particle.z = Math.sign(particle.z) * boundary;
+                            }
+                        } else {
+                            const maxX = canvas.width / 2;
+                            const maxY = canvas.height / 2;
+                            if (Math.abs(particle.x) > maxX) {
+                                particle.speedX *= -1;
+                                particle.x = Math.sign(particle.x) * maxX;
+                            }
+                            if (Math.abs(particle.y) > maxY) {
+                                particle.speedY *= -1;
+                                particle.y = Math.sign(particle.y) * maxY;
+                            }
+                        }
                         return;
                     }
                     
                     const dx = mouse.x - particle.x;
                     const dy = mouse.y - particle.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    // Calculate angle from center
-                    const angle = Math.atan2(dy, dx);
+                    const dz = (mouse.z !== null ? mouse.z : 0) - particle.z;
+                    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                     
                     // Orbital mechanics: particles want to maintain stable orbits
                     // Orbital velocity decreases with distance (like real planets)
                     const minOrbitRadius = 60;
                     const maxOrbitRadius = 400;
                     
-                    if (distance < minOrbitRadius) {
-                        // Too close - push outward to maintain orbit (stronger push)
-                        const pushStrength = (minOrbitRadius - distance) / minOrbitRadius * 0.15;
-                        particle.speedX -= Math.cos(angle) * pushStrength;
-                        particle.speedY -= Math.sin(angle) * pushStrength;
-                    } else if (distance > maxOrbitRadius) {
-                        // Too far - pull inward
-                        const pullStrength = (distance - maxOrbitRadius) / 100 * 0.02;
-                        particle.speedX += Math.cos(angle) * pullStrength;
-                        particle.speedY += Math.sin(angle) * pullStrength;
-                    }
-                    
-                    // Gravitational attraction (weaker than black hole, maintains orbits)
                     if (distance > 0) {
-                        const gravityStrength = 0.3 / (distance * 0.1 + 1); // Inverse relationship
-                        particle.speedX += dx * gravityStrength * 0.001;
-                        particle.speedY += dy * gravityStrength * 0.001;
+                        if (distance < minOrbitRadius) {
+                            // Too close - push outward to maintain orbit (stronger push) - 3D
+                            const pushStrength = (minOrbitRadius - distance) / minOrbitRadius * 0.15 * intensityFactor;
+                            particle.speedX -= (dx / distance) * pushStrength;
+                            particle.speedY -= (dy / distance) * pushStrength;
+                            particle.speedZ -= (dz / distance) * pushStrength * 0.5;
+                        } else if (distance > maxOrbitRadius) {
+                            // Too far - pull inward - 3D
+                            const pullStrength = (distance - maxOrbitRadius) / 100 * 0.02 * intensityFactor;
+                            particle.speedX += (dx / distance) * pullStrength;
+                            particle.speedY += (dy / distance) * pullStrength;
+                            particle.speedZ += (dz / distance) * pullStrength * 0.5;
+                        }
+                        
+                        // Gravitational attraction (weaker than black hole, maintains orbits) - 3D
+                        const gravityStrength = 0.3 / (distance * 0.1 + 1) * intensityFactor; // Inverse relationship
+                        particle.speedX += (dx / distance) * gravityStrength * 0.001;
+                        particle.speedY += (dy / distance) * gravityStrength * 0.001;
+                        particle.speedZ += (dz / distance) * gravityStrength * 0.001;
                     }
                     
-                    // Orbital velocity - particles should move perpendicular to radius
+                    // Orbital velocity - particles should move perpendicular to radius (3D)
                     // This creates circular/spiral motion
-                    const currentRadialSpeed = (dx * particle.speedX + dy * particle.speedY) / distance;
-                    const desiredOrbitalSpeed = Math.sqrt(0.3 / (distance * 0.1 + 1)) * 0.5;
-                    
-                    // Calculate perpendicular direction (tangent to orbit)
-                    const tangentX = -dy / distance;
-                    const tangentY = dx / distance;
-                    
-                    // Add orbital velocity component (bounded to prevent excessive speeds)
-                    const orbitalBoost = 0.02;
-                    const maxOrbitalBoost = 0.5; // Limit orbital velocity addition
-                    const orbitalVelX = tangentX * Math.min(desiredOrbitalSpeed * orbitalBoost, maxOrbitalBoost);
-                    const orbitalVelY = tangentY * Math.min(desiredOrbitalSpeed * orbitalBoost, maxOrbitalBoost);
-                    particle.speedX += orbitalVelX;
-                    particle.speedY += orbitalVelY;
-                    
-                    // Reduce radial motion to encourage orbital motion
                     if (distance > 0) {
+                        const currentRadialSpeed = (dx * particle.speedX + dy * particle.speedY + dz * particle.speedZ) / distance;
+                        const desiredOrbitalSpeed = Math.sqrt(0.3 / (distance * 0.1 + 1)) * 0.5;
+                        
+                        // Calculate perpendicular direction (tangent to orbit in XY plane, with Z component)
+                        const tangentX = -dy / distance;
+                        const tangentY = dx / distance;
+                        // Z component for 3D orbital motion
+                        const tangentZ = -dz / (distance * 2);
+                        
+                        // Add orbital velocity component (bounded to prevent excessive speeds)
+                        const orbitalBoost = 0.02;
+                        const maxOrbitalBoost = 0.5; // Limit orbital velocity addition
+                        const orbitalVelX = tangentX * Math.min(desiredOrbitalSpeed * orbitalBoost, maxOrbitalBoost);
+                        const orbitalVelY = tangentY * Math.min(desiredOrbitalSpeed * orbitalBoost, maxOrbitalBoost);
+                        const orbitalVelZ = tangentZ * Math.min(desiredOrbitalSpeed * orbitalBoost * 0.5, maxOrbitalBoost * 0.5);
+                        particle.speedX += orbitalVelX;
+                        particle.speedY += orbitalVelY;
+                        particle.speedZ += orbitalVelZ;
+                        
+                        // Reduce radial motion to encourage orbital motion
                         const radialDamping = 0.95;
                         const radialX = (dx / distance) * currentRadialSpeed;
                         const radialY = (dy / distance) * currentRadialSpeed;
+                        const radialZ = (dz / distance) * currentRadialSpeed;
                         particle.speedX -= radialX * (1 - radialDamping);
                         particle.speedY -= radialY * (1 - radialDamping);
+                        particle.speedZ -= radialZ * (1 - radialDamping);
                     }
                     
-                    // Particle interactions - repulsion at close range, weak attraction at medium range
+                    // Particle interactions - repulsion at close range, weak attraction at medium range (3D)
                     for (let other of particles) {
                         if (other === particle) continue;
                         
                         const otherDx = other.x - particle.x;
                         const otherDy = other.y - particle.y;
-                        const otherDistance = Math.sqrt(otherDx * otherDx + otherDy * otherDy);
+                        const otherDz = other.z - particle.z;
+                        const otherDistance = Math.sqrt(otherDx * otherDx + otherDy * otherDy + otherDz * otherDz);
                         
                         if (otherDistance > 0) {
                             const minSeparation = (particle.size + other.size) * 2.5;
                             
                             if (otherDistance < minSeparation) {
                                 // Repulsion when too close - prevents clumping
-                                const repulsionStrength = (minSeparation - otherDistance) / minSeparation * 0.02;
+                                const repulsionStrength = (minSeparation - otherDistance) / minSeparation * 0.02 * intensityFactor;
                                 particle.speedX -= (otherDx / otherDistance) * repulsionStrength;
                                 particle.speedY -= (otherDy / otherDistance) * repulsionStrength;
+                                particle.speedZ -= (otherDz / otherDistance) * repulsionStrength;
                             } else if (otherDistance < 100) {
                                 // Weak attraction at medium range (forms structures without clumping)
-                                const clusterStrength = (100 - otherDistance) / 100 * 0.0003;
+                                const clusterStrength = (100 - otherDistance) / 100 * 0.0003 * intensityFactor;
                                 particle.speedX += (otherDx / otherDistance) * clusterStrength;
                                 particle.speedY += (otherDy / otherDistance) * clusterStrength;
+                                particle.speedZ += (otherDz / otherDistance) * clusterStrength;
                             }
                         }
                     }
@@ -579,10 +862,35 @@
                     // Update position
                     particle.x += particle.speedX;
                     particle.y += particle.speedY;
+                    particle.z += particle.speedZ;
                     
-                    // Bounce off walls
-                    if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -0.8;
-                    if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -0.8;
+                    // Boundary handling - different for 2D vs 3D
+                    if (is3D) {
+                        const boundary = 500;
+                        if (Math.abs(particle.x) > boundary) {
+                            particle.speedX *= -0.8;
+                            particle.x = Math.sign(particle.x) * boundary;
+                        }
+                        if (Math.abs(particle.y) > boundary) {
+                            particle.speedY *= -0.8;
+                            particle.y = Math.sign(particle.y) * boundary;
+                        }
+                        if (Math.abs(particle.z) > boundary) {
+                            particle.speedZ *= -0.8;
+                            particle.z = Math.sign(particle.z) * boundary;
+                        }
+                    } else {
+                        const maxX = canvas.width / 2;
+                        const maxY = canvas.height / 2;
+                        if (Math.abs(particle.x) > maxX) {
+                            particle.speedX *= -0.8;
+                            particle.x = Math.sign(particle.x) * maxX;
+                        }
+                        if (Math.abs(particle.y) > maxY) {
+                            particle.speedY *= -0.8;
+                            particle.y = Math.sign(particle.y) * maxY;
+                        }
+                    }
                     
                     // Size based on distance from center (like density waves in galaxies)
                     // Keep particles visible - don't shrink too much
@@ -596,13 +904,15 @@
                     // Damping to maintain stable orbits
                     particle.speedX *= 0.995;
                     particle.speedY *= 0.995;
+                    particle.speedZ *= 0.995;
                     
                     // Safety: Limit maximum speed in galaxy mode to prevent runaway velocities
                     const maxSpeed = 8;
-                    const currentSpeed = Math.sqrt(particle.speedX * particle.speedX + particle.speedY * particle.speedY);
+                    const currentSpeed = Math.sqrt(particle.speedX * particle.speedX + particle.speedY * particle.speedY + particle.speedZ * particle.speedZ);
                     if (currentSpeed > maxSpeed) {
                         particle.speedX = (particle.speedX / currentSpeed) * maxSpeed;
                         particle.speedY = (particle.speedY / currentSpeed) * maxSpeed;
+                        particle.speedZ = (particle.speedZ / currentSpeed) * maxSpeed;
                     }
                 }
             },
@@ -613,49 +923,83 @@
                         // No mouse - particles drift naturally
                         particle.x += particle.speedX;
                         particle.y += particle.speedY;
+                        particle.z += particle.speedZ;
                         particle.speedX *= 0.98;
                         particle.speedY *= 0.98;
+                        particle.speedZ *= 0.98;
                         
-                        if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -0.8;
-                        if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -0.8;
+                        // Boundary handling
+                        if (is3D) {
+                            const boundary = 500;
+                            if (Math.abs(particle.x) > boundary) {
+                                particle.speedX *= -0.7;
+                                particle.x = Math.sign(particle.x) * boundary;
+                            }
+                            if (Math.abs(particle.y) > boundary) {
+                                particle.speedY *= -0.7;
+                                particle.y = Math.sign(particle.y) * boundary;
+                            }
+                            if (Math.abs(particle.z) > boundary) {
+                                particle.speedZ *= -0.7;
+                                particle.z = Math.sign(particle.z) * boundary;
+                            }
+                        } else {
+                            const maxX = canvas.width / 2;
+                            const maxY = canvas.height / 2;
+                            if (Math.abs(particle.x) > maxX) {
+                                particle.speedX *= -0.7;
+                                particle.x = Math.sign(particle.x) * maxX;
+                            }
+                            if (Math.abs(particle.y) > maxY) {
+                                particle.speedY *= -0.7;
+                                particle.y = Math.sign(particle.y) * maxY;
+                            }
+                        }
                         return;
                     }
                     
                     const dx = mouse.x - particle.x;
                     const dy = mouse.y - particle.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const dz = (mouse.z !== null ? mouse.z : 0) - particle.z;
+                    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
                     
                     if (distance > 0) {
                         // Calculate angle from center
                         const angle = Math.atan2(dy, dx);
                         
-                        // Vortex effect: particles spiral around the mouse
+                        // Vortex effect: particles spiral around the mouse (3D)
                         // Create tangential (perpendicular) velocity for rotation
                         const tangentX = -dy / distance;
                         const tangentY = dx / distance;
+                        const tangentZ = -dz / (distance * 2); // Z component for 3D rotation
                         
                         // Vortex strength increases as particles get closer
                         const vortexRadius = 400;
                         if (distance < vortexRadius) {
                             // Angular velocity (rotation speed) - faster closer to center
-                            const angularVelocity = (vortexRadius - distance) / vortexRadius * 2;
+                            const angularVelocity = (vortexRadius - distance) / vortexRadius * 2 * intensityFactor;
                             
-                            // Add rotational motion (tangential component)
+                            // Add rotational motion (tangent component) - 3D
                             particle.speedX += tangentX * angularVelocity * 0.03;
                             particle.speedY += tangentY * angularVelocity * 0.03;
+                            particle.speedZ += tangentZ * angularVelocity * 0.02;
                             
-                            // Radial attraction (pulls particles toward center)
-                            const radialAttraction = (vortexRadius - distance) / vortexRadius * 0.01;
+                            // Radial attraction (pulls particles toward center) - 3D
+                            const radialAttraction = (vortexRadius - distance) / vortexRadius * 0.01 * intensityFactor;
                             particle.speedX += (dx / distance) * radialAttraction;
                             particle.speedY += (dy / distance) * radialAttraction;
+                            particle.speedZ += (dz / distance) * radialAttraction * 0.5;
                             
                             // Centrifugal force - particles want to move outward at high speeds
-                            const currentRadialSpeed = (dx * particle.speedX + dy * particle.speedY) / distance;
-                            if (currentRadialSpeed < 0 && distance < 50) {
-                                // Too close and moving inward - push outward
-                                const centrifugalForce = 0.05;
-                                particle.speedX -= (dx / distance) * centrifugalForce;
-                                particle.speedY -= (dy / distance) * centrifugalForce;
+                            if (distance > 0) {
+                                const currentRadialSpeed = (dx * particle.speedX + dy * particle.speedY + dz * particle.speedZ) / distance;
+                                if (currentRadialSpeed < 0 && distance < 50) {
+                                    // Too close and moving inward - push outward
+                                    const centrifugalForce = 0.05;
+                                    particle.speedX -= (dx / distance) * centrifugalForce;
+                                    particle.speedY -= (dy / distance) * centrifugalForce;
+                                    particle.speedZ -= (dz / distance) * centrifugalForce * 0.5;
+                                }
                             }
                             
                             // Size increases in the vortex (like particles being stretched)
@@ -667,27 +1011,31 @@
                         }
                     }
                     
-                    // Fluid-like interactions between particles
+                    // Fluid-like interactions between particles (3D)
                     for (let other of particles) {
                         if (other === particle) continue;
                         
                         const otherDx = other.x - particle.x;
                         const otherDy = other.y - particle.y;
-                        const otherDistance = Math.sqrt(otherDx * otherDx + otherDy * otherDy);
+                        const otherDz = other.z - particle.z;
+                        const otherDistance = Math.sqrt(otherDx * otherDx + otherDy * otherDy + otherDz * otherDz);
                         
                         if (otherDistance > 0 && otherDistance < 100) {
                             // Viscous drag - particles near each other slow down (fluid resistance)
                             const dragStrength = (100 - otherDistance) / 100 * 0.001;
                             const relativeSpeedX = particle.speedX - other.speedX;
                             const relativeSpeedY = particle.speedY - other.speedY;
+                            const relativeSpeedZ = particle.speedZ - other.speedZ;
                             particle.speedX -= relativeSpeedX * dragStrength;
                             particle.speedY -= relativeSpeedY * dragStrength;
+                            particle.speedZ -= relativeSpeedZ * dragStrength;
                             
                             // Weak repulsion to prevent overlap
                             if (otherDistance < (particle.size + other.size) * 2) {
                                 const repulsionStrength = ((particle.size + other.size) * 2 - otherDistance) / ((particle.size + other.size) * 2) * 0.015;
                                 particle.speedX -= (otherDx / otherDistance) * repulsionStrength;
                                 particle.speedY -= (otherDy / otherDistance) * repulsionStrength;
+                                particle.speedZ -= (otherDz / otherDistance) * repulsionStrength;
                             }
                         }
                     }
@@ -695,34 +1043,561 @@
                     // Update position
                     particle.x += particle.speedX;
                     particle.y += particle.speedY;
+                    particle.z += particle.speedZ;
                     
-                    // Bounce off walls with energy loss
-                    if (particle.x < 0 || particle.x > canvas.width) {
-                        particle.speedX *= -0.7;
-                        particle.x = Math.max(0, Math.min(canvas.width, particle.x));
-                    }
-                    if (particle.y < 0 || particle.y > canvas.height) {
-                        particle.speedY *= -0.7;
-                        particle.y = Math.max(0, Math.min(canvas.height, particle.y));
+                    // Boundary handling - different for 2D vs 3D
+                    if (is3D) {
+                        const boundary = 500;
+                        if (Math.abs(particle.x) > boundary) {
+                            particle.speedX *= -0.7;
+                            particle.x = Math.sign(particle.x) * boundary;
+                        }
+                        if (Math.abs(particle.y) > boundary) {
+                            particle.speedY *= -0.7;
+                            particle.y = Math.sign(particle.y) * boundary;
+                        }
+                        if (Math.abs(particle.z) > boundary) {
+                            particle.speedZ *= -0.7;
+                            particle.z = Math.sign(particle.z) * boundary;
+                        }
+                    } else {
+                        const maxX = canvas.width / 2;
+                        const maxY = canvas.height / 2;
+                        if (Math.abs(particle.x) > maxX) {
+                            particle.speedX *= -0.7;
+                            particle.x = Math.sign(particle.x) * maxX;
+                        }
+                        if (Math.abs(particle.y) > maxY) {
+                            particle.speedY *= -0.7;
+                            particle.y = Math.sign(particle.y) * maxY;
+                        }
                     }
                     
                     // Viscous damping (fluid resistance)
                     particle.speedX *= 0.99;
                     particle.speedY *= 0.99;
+                    particle.speedZ *= 0.99;
+                }
+            },
+            crystal: {
+                name: 'Crystal',
+                update: function(particle) {
+                    // Crystal lattice formation constants
+                    const crystalRadius = 400;
+                    const gridSpacing = 30; // Spacing between lattice points
+                    
+                    if (mouse.x === null || mouse.y === null) {
+                        // No mouse - particles drift naturally
+                        particle.x += particle.speedX;
+                        particle.y += particle.speedY;
+                        particle.z += particle.speedZ;
+                        particle.speedX *= 0.98;
+                        particle.speedY *= 0.98;
+                        particle.speedZ *= 0.98;
+                        
+                        // Boundary handling
+                        if (is3D) {
+                            const boundary = 500;
+                            if (Math.abs(particle.x) > boundary) {
+                                particle.speedX *= -0.8;
+                                particle.x = Math.sign(particle.x) * boundary;
+                            }
+                            if (Math.abs(particle.y) > boundary) {
+                                particle.speedY *= -0.8;
+                                particle.y = Math.sign(particle.y) * boundary;
+                            }
+                            if (Math.abs(particle.z) > boundary) {
+                                particle.speedZ *= -0.8;
+                                particle.z = Math.sign(particle.z) * boundary;
+                            }
+                        } else {
+                            const maxX = canvas.width / 2;
+                            const maxY = canvas.height / 2;
+                            if (Math.abs(particle.x) > maxX) {
+                                particle.speedX *= -0.8;
+                                particle.x = Math.sign(particle.x) * maxX;
+                            }
+                            if (Math.abs(particle.y) > maxY) {
+                                particle.speedY *= -0.8;
+                                particle.y = Math.sign(particle.y) * maxY;
+                            }
+                        }
+                        particle.size += (particle.baseSize - particle.size) * 0.1;
+                        return;
+                    }
+                    
+                    const dx = mouse.x - particle.x;
+                    const dy = mouse.y - particle.y;
+                    const dz = (mouse.z !== null ? mouse.z : 0) - particle.z;
+                    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    
+                    if (distance > 0 && distance < crystalRadius) {
+                        // Attract particles toward center to form crystal
+                        const attractionStrength = (crystalRadius - distance) / crystalRadius * 0.02 * intensityFactor;
+                        particle.speedX += (dx / distance) * attractionStrength;
+                        particle.speedY += (dy / distance) * attractionStrength;
+                        particle.speedZ += (dz / distance) * attractionStrength;
+                        
+                        // Find nearest lattice point
+                        const gridX = Math.round((particle.x - mouse.x) / gridSpacing) * gridSpacing + mouse.x;
+                        const gridY = Math.round((particle.y - mouse.y) / gridSpacing) * gridSpacing + mouse.y;
+                        const gridZ = Math.round((particle.z - (mouse.z || 0)) / gridSpacing) * gridSpacing + (mouse.z || 0);
+                        
+                        // Attract to nearest lattice point
+                        const latticeDx = gridX - particle.x;
+                        const latticeDy = gridY - particle.y;
+                        const latticeDz = gridZ - particle.z;
+                        const latticeDistance = Math.sqrt(latticeDx * latticeDx + latticeDy * latticeDy + latticeDz * latticeDz);
+                        
+                        if (latticeDistance > 0 && latticeDistance < gridSpacing * 2) {
+                            const latticeStrength = (gridSpacing * 2 - latticeDistance) / (gridSpacing * 2) * 0.12 * intensityFactor;
+                            particle.speedX += (latticeDx / latticeDistance) * latticeStrength;
+                            particle.speedY += (latticeDy / latticeDistance) * latticeStrength;
+                            particle.speedZ += (latticeDz / latticeDistance) * latticeStrength;
+                        }
+                        
+                        // Size increases when in crystal structure
+                        const sizeBoost = 1 + (crystalRadius - distance) / crystalRadius * 1.5;
+                        particle.size = particle.baseSize * sizeBoost;
+                    } else {
+                        particle.size += (particle.baseSize - particle.size) * 0.1;
+                    }
+                    
+                    // Strong repulsion between particles to maintain crystal spacing
+                    for (let other of particles) {
+                        if (other === particle) continue;
+                        
+                        const otherDx = other.x - particle.x;
+                        const otherDy = other.y - particle.y;
+                        const otherDz = other.z - particle.z;
+                        const otherDistance = Math.sqrt(otherDx * otherDx + otherDy * otherDy + otherDz * otherDz);
+                        
+                        if (otherDistance > 0) {
+                            const minCrystalSpacing = (particle.size + other.size) * 2.0;
+                            
+                            if (otherDistance < minCrystalSpacing) {
+                                // Strong repulsion to maintain crystal structure
+                                const repulsionStrength = (minCrystalSpacing - otherDistance) / minCrystalSpacing * 0.15 * intensityFactor;
+                                particle.speedX -= (otherDx / otherDistance) * repulsionStrength;
+                                particle.speedY -= (otherDy / otherDistance) * repulsionStrength;
+                                particle.speedZ -= (otherDz / otherDistance) * repulsionStrength;
+                            } else if (otherDistance < gridSpacing * 2.5 && otherDistance > minCrystalSpacing) {
+                                // Weak alignment force - helps particles align to lattice
+                                const alignmentStrength = 0.001;
+                                const alignmentX = (otherDx / otherDistance) * alignmentStrength;
+                                const alignmentY = (otherDy / otherDistance) * alignmentStrength;
+                                const alignmentZ = (otherDz / otherDistance) * alignmentStrength;
+                                
+                                // Align velocities slightly
+                                particle.speedX += alignmentX;
+                                particle.speedY += alignmentY;
+                                particle.speedZ += alignmentZ;
+                            }
+                        }
+                    }
+                    
+                    // Update position
+                    particle.x += particle.speedX;
+                    particle.y += particle.speedY;
+                    particle.z += particle.speedZ;
+                    
+                    // Boundary handling
+                    if (is3D) {
+                        const boundary = 500;
+                        if (Math.abs(particle.x) > boundary) {
+                            particle.speedX *= -0.8;
+                            particle.x = Math.sign(particle.x) * boundary;
+                        }
+                        if (Math.abs(particle.y) > boundary) {
+                            particle.speedY *= -0.8;
+                            particle.y = Math.sign(particle.y) * boundary;
+                        }
+                        if (Math.abs(particle.z) > boundary) {
+                            particle.speedZ *= -0.8;
+                            particle.z = Math.sign(particle.z) * boundary;
+                        }
+                    } else {
+                        const maxX = canvas.width / 2;
+                        const maxY = canvas.height / 2;
+                        if (Math.abs(particle.x) > maxX) {
+                            particle.speedX *= -0.8;
+                            particle.x = Math.sign(particle.x) * maxX;
+                        }
+                        if (Math.abs(particle.y) > maxY) {
+                            particle.speedY *= -0.8;
+                            particle.y = Math.sign(particle.y) * maxY;
+                        }
+                    }
+                    
+                    // Light damping for stable crystal formation
+                    particle.speedX *= 0.99;
+                    particle.speedY *= 0.99;
+                    particle.speedZ *= 0.99;
+                }
+            },
+            quantum: {
+                name: 'Quantum Chaos',
+                update: function(particle) {
+                    // Initialize quantum properties if not present
+                    if (!particle.quantumState) {
+                        particle.quantumState = {
+                            phase: Math.random() * Math.PI * 2,
+                            probability: 0.5 + Math.random() * 0.5,
+                            timeDilation: 0.5 + Math.random() * 1.5,
+                            entanglement: null,
+                            dimensionPhase: Math.random(),
+                            energy: 1.0,
+                            tunnelCooldown: 0
+                        };
+                    }
+                    
+                    const q = particle.quantumState;
+                    const time = Date.now() * 0.001;
+                    
+                    // Time dilation - particles experience time at different rates
+                    const localTime = time * q.timeDilation;
+                    
+                    // Quantum phase oscillation
+                    q.phase += 0.05 * q.timeDilation;
+                    if (q.phase > Math.PI * 2) q.phase -= Math.PI * 2;
+                    
+                    // Probability wave - particle exists in multiple states
+                    const waveAmplitude = Math.sin(q.phase) * 0.5 + 0.5;
+                    q.probability = 0.3 + waveAmplitude * 0.7;
+                    
+                    // Dimensional phase shifting - particle flickers between dimensions
+                    q.dimensionPhase += 0.03 * q.timeDilation;
+                    if (q.dimensionPhase > 1) q.dimensionPhase -= 1;
+                    const visibility = Math.sin(q.dimensionPhase * Math.PI * 2) * 0.5 + 0.5;
+                    
+                    if (mouse.x === null || mouse.y === null) {
+                        // No mouse - quantum fluctuations create random motion
+                        const fluctuation = (Math.random() - 0.5) * 0.1;
+                        particle.speedX += fluctuation * q.probability;
+                        particle.speedY += fluctuation * q.probability;
+                        particle.speedZ += fluctuation * q.probability;
+                        
+                        // Quantum tunneling - random teleportation
+                        if (Math.random() < 0.001 * q.probability && q.tunnelCooldown <= 0) {
+                            if (is3D) {
+                                particle.x = (Math.random() - 0.5) * 1000;
+                                particle.y = (Math.random() - 0.5) * 1000;
+                                particle.z = (Math.random() - 0.5) * 1000;
+                            } else {
+                                particle.x = (Math.random() - 0.5) * canvas.width;
+                                particle.y = (Math.random() - 0.5) * canvas.height;
+                            }
+                            q.tunnelCooldown = 60;
+                            q.energy *= 0.8; // Energy loss from tunneling
+                        }
+                        
+                        if (q.tunnelCooldown > 0) q.tunnelCooldown--;
+                        
+                        // Update position with time dilation
+                        particle.x += particle.speedX * q.timeDilation;
+                        particle.y += particle.speedY * q.timeDilation;
+                        particle.z += particle.speedZ * q.timeDilation;
+                        
+                        // Quantum decoherence - gradual energy loss
+                        particle.speedX *= 0.995;
+                        particle.speedY *= 0.995;
+                        particle.speedZ *= 0.995;
+                        
+                        // Boundary handling with quantum tunneling
+                        if (is3D) {
+                            const boundary = 500;
+                            if (Math.abs(particle.x) > boundary) {
+                                if (Math.random() < 0.3) {
+                                    // Quantum tunnel through boundary
+                                    particle.x = -Math.sign(particle.x) * boundary * 0.8;
+                                } else {
+                                    particle.speedX *= -0.8;
+                                    particle.x = Math.sign(particle.x) * boundary;
+                                }
+                            }
+                            if (Math.abs(particle.y) > boundary) {
+                                if (Math.random() < 0.3) {
+                                    particle.y = -Math.sign(particle.y) * boundary * 0.8;
+                                } else {
+                                    particle.speedY *= -0.8;
+                                    particle.y = Math.sign(particle.y) * boundary;
+                                }
+                            }
+                            if (Math.abs(particle.z) > boundary) {
+                                if (Math.random() < 0.3) {
+                                    particle.z = -Math.sign(particle.z) * boundary * 0.8;
+                                } else {
+                                    particle.speedZ *= -0.8;
+                                    particle.z = Math.sign(particle.z) * boundary;
+                                }
+                            }
+                        } else {
+                            const maxX = canvas.width / 2;
+                            const maxY = canvas.height / 2;
+                            if (Math.abs(particle.x) > maxX) {
+                                if (Math.random() < 0.3) {
+                                    particle.x = -Math.sign(particle.x) * maxX * 0.8;
+                                } else {
+                                    particle.speedX *= -0.8;
+                                    particle.x = Math.sign(particle.x) * maxX;
+                                }
+                            }
+                            if (Math.abs(particle.y) > maxY) {
+                                if (Math.random() < 0.3) {
+                                    particle.y = -Math.sign(particle.y) * maxY * 0.8;
+                                } else {
+                                    particle.speedY *= -0.8;
+                                    particle.y = Math.sign(particle.y) * maxY;
+                                }
+                            }
+                        }
+                        
+                        // Size based on probability wave
+                        particle.size = particle.baseSize * (0.5 + q.probability * 1.5) * visibility;
+                        return;
+                    }
+                    
+                    // Mouse interaction creates quantum field disturbance
+                    const dx = mouse.x - particle.x;
+                    const dy = mouse.y - particle.y;
+                    const dz = (mouse.z !== null ? mouse.z : 0) - particle.z;
+                    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    
+                    const quantumRadius = 450;
+                    
+                    if (distance > 0 && distance < quantumRadius) {
+                        // Quantum field attraction (non-local, probability-based)
+                        const fieldStrength = (quantumRadius - distance) / quantumRadius;
+                        const attraction = fieldStrength * 0.03 * q.probability * intensityFactor;
+                        
+                        // Wave-particle duality - sometimes acts like wave, sometimes particle
+                        const isWave = Math.sin(localTime * 2) > 0;
+                        
+                        if (isWave) {
+                            // Wave behavior - spreads out, interferes
+                            const wavePhase = distance * 0.1 + localTime;
+                            const interference = Math.sin(wavePhase) * 0.5 + 0.5;
+                            particle.speedX += (dx / distance) * attraction * interference;
+                            particle.speedY += (dy / distance) * attraction * interference;
+                            particle.speedZ += (dz / distance) * attraction * interference;
+                        } else {
+                            // Particle behavior - direct attraction
+                            particle.speedX += (dx / distance) * attraction;
+                            particle.speedY += (dy / distance) * attraction;
+                            particle.speedZ += (dz / distance) * attraction;
+                        }
+                        
+                        // Quantum entanglement - find or create entangled partner
+                        if (!q.entanglement || !particles.includes(q.entanglement)) {
+                            // Find nearest unentangled particle
+                            let minDist = Infinity;
+                            let partner = null;
+                            for (let other of particles) {
+                                if (other === particle || !other.quantumState || other.quantumState.entanglement) continue;
+                                const odx = other.x - particle.x;
+                                const ody = other.y - particle.y;
+                                const odz = other.z - particle.z;
+                                const odist = Math.sqrt(odx * odx + ody * ody + odz * odz);
+                                if (odist < 100 && odist < minDist) {
+                                    minDist = odist;
+                                    partner = other;
+                                }
+                            }
+                            if (partner) {
+                                q.entanglement = partner;
+                                partner.quantumState.entanglement = particle;
+                                // Sync quantum states
+                                partner.quantumState.phase = q.phase;
+                                partner.quantumState.probability = q.probability;
+                            }
+                        }
+                        
+                        // Entangled particles affect each other instantly (spooky action at a distance)
+                        if (q.entanglement && particles.includes(q.entanglement)) {
+                            const ent = q.entanglement;
+                            const entDx = ent.x - particle.x;
+                            const entDy = ent.y - particle.y;
+                            const entDz = ent.z - particle.z;
+                            const entDist = Math.sqrt(entDx * entDx + entDy * entDy + entDz * entDz);
+                            
+                            if (entDist > 0) {
+                                // Instant non-local correlation
+                                const correlation = 0.02 / (1 + entDist * 0.01);
+                                
+                                // Mirror each other's motion
+                                particle.speedX += ent.speedX * correlation * 0.1;
+                                particle.speedY += ent.speedY * correlation * 0.1;
+                                particle.speedZ += ent.speedZ * correlation * 0.1;
+                                
+                                // Quantum spin coupling
+                                const spin = Math.sin(localTime + q.phase);
+                                particle.speedX += (entDx / entDist) * spin * 0.005;
+                                particle.speedY += (entDy / entDist) * spin * 0.005;
+                                particle.speedZ += (entDz / entDist) * spin * 0.005;
+                            }
+                        }
+                        
+                        // Strange attractor - chaotic but beautiful patterns
+                        const attractorX = Math.sin(localTime * 0.5) * 200;
+                        const attractorY = Math.cos(localTime * 0.7) * 200;
+                        const attractorZ = Math.sin(localTime * 0.3) * 200;
+                        
+                        const attDx = (mouse.x + attractorX) - particle.x;
+                        const attDy = (mouse.y + attractorY) - particle.y;
+                        const attDz = ((mouse.z || 0) + attractorZ) - particle.z;
+                        const attDist = Math.sqrt(attDx * attDx + attDy * attDy + attDz * attDz);
+                        
+                        if (attDist > 0 && attDist < 300) {
+                            const attractorStrength = (300 - attDist) / 300 * 0.008 * q.probability * intensityFactor;
+                            particle.speedX += (attDx / attDist) * attractorStrength;
+                            particle.speedY += (attDy / attDist) * attractorStrength;
+                            particle.speedZ += (attDz / attDist) * attractorStrength;
+                        }
+                        
+                        // Quantum energy fluctuations
+                        q.energy += (Math.random() - 0.5) * 0.1;
+                        q.energy = Math.max(0.3, Math.min(2.0, q.energy));
+                        
+                        // Size based on energy and probability
+                        particle.size = particle.baseSize * q.energy * (0.8 + q.probability * 1.2) * visibility;
+                    } else {
+                        particle.size = particle.baseSize * (0.5 + q.probability * 0.5) * visibility;
+                    }
+                    
+                    // Quantum interactions with other particles
+                    for (let other of particles) {
+                        if (other === particle) continue;
+                        
+                        const otherDx = other.x - particle.x;
+                        const otherDy = other.y - particle.y;
+                        const otherDz = other.z - particle.z;
+                        const otherDistance = Math.sqrt(otherDx * otherDx + otherDy * otherDy + otherDz * otherDz);
+                        
+                        if (otherDistance > 0 && otherDistance < 80) {
+                            const otherQ = other.quantumState || { probability: 0.5, phase: 0 };
+                            
+                            // Quantum interference - wave functions interfere
+                            const interference = Math.sin(q.phase - otherQ.phase) * 0.5 + 0.5;
+                            
+                            // Probability-based repulsion (quantum exclusion)
+                            const exclusionStrength = (1 - interference) * 0.1;
+                            const minSpacing = (particle.size + other.size) * 1.5;
+                            
+                            if (otherDistance < minSpacing) {
+                                particle.speedX -= (otherDx / otherDistance) * exclusionStrength;
+                                particle.speedY -= (otherDy / otherDistance) * exclusionStrength;
+                                particle.speedZ -= (otherDz / otherDistance) * exclusionStrength;
+                            } else {
+                                // Quantum coherence - particles can phase through each other
+                                if (Math.random() < 0.1 * q.probability) {
+                                    // Partial phase shift - reduced interaction
+                                    const phaseShift = 0.3;
+                                    particle.speedX += (otherDx / otherDistance) * phaseShift * 0.001;
+                                    particle.speedY += (otherDy / otherDistance) * phaseShift * 0.001;
+                                    particle.speedZ += (otherDz / otherDistance) * phaseShift * 0.001;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Update position with time dilation
+                    particle.x += particle.speedX * q.timeDilation;
+                    particle.y += particle.speedY * q.timeDilation;
+                    particle.z += particle.speedZ * q.timeDilation;
+                    
+                    // Quantum decoherence
+                    particle.speedX *= 0.99;
+                    particle.speedY *= 0.99;
+                    particle.speedZ *= 0.99;
+                    
+                    // Boundary handling with quantum tunneling
+                    if (is3D) {
+                        const boundary = 500;
+                        if (Math.abs(particle.x) > boundary) {
+                            if (Math.random() < 0.2 * q.probability) {
+                                particle.x = -Math.sign(particle.x) * boundary * 0.8;
+                            } else {
+                                particle.speedX *= -0.8;
+                                particle.x = Math.sign(particle.x) * boundary;
+                            }
+                        }
+                        if (Math.abs(particle.y) > boundary) {
+                            if (Math.random() < 0.2 * q.probability) {
+                                particle.y = -Math.sign(particle.y) * boundary * 0.8;
+                            } else {
+                                particle.speedY *= -0.8;
+                                particle.y = Math.sign(particle.y) * boundary;
+                            }
+                        }
+                        if (Math.abs(particle.z) > boundary) {
+                            if (Math.random() < 0.2 * q.probability) {
+                                particle.z = -Math.sign(particle.z) * boundary * 0.8;
+                            } else {
+                                particle.speedZ *= -0.8;
+                                particle.z = Math.sign(particle.z) * boundary;
+                            }
+                        }
+                    } else {
+                        const maxX = canvas.width / 2;
+                        const maxY = canvas.height / 2;
+                        if (Math.abs(particle.x) > maxX) {
+                            if (Math.random() < 0.2 * q.probability) {
+                                particle.x = -Math.sign(particle.x) * maxX * 0.8;
+                            } else {
+                                particle.speedX *= -0.8;
+                                particle.x = Math.sign(particle.x) * maxX;
+                            }
+                        }
+                        if (Math.abs(particle.y) > maxY) {
+                            if (Math.random() < 0.2 * q.probability) {
+                                particle.y = -Math.sign(particle.y) * maxY * 0.8;
+                            } else {
+                                particle.speedY *= -0.8;
+                                particle.y = Math.sign(particle.y) * maxY;
+                            }
+                        }
+                    }
                 }
             }
         };
         
         let currentMode = 'normal';
+        let currentEffect = 'none';
+        
+        // Visual effects definitions
+        const effects = {
+            none: { name: 'None', draw: null },
+            trails: { name: 'Trails', draw: 'trails' },
+            glow: { name: 'Glow', draw: 'glow' },
+            explosion: { name: 'Explosion', draw: 'explosion' },
+            wave: { name: 'Wave', draw: 'wave' },
+            sparkle: { name: 'Sparkle', draw: 'sparkle' },
+            plasma: { name: 'Plasma', draw: 'plasma' },
+            neon: { name: 'Neon', draw: 'neon' },
+            fire: { name: 'Fire', draw: 'fire' }
+        };
 
         class Particle {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
+            constructor(use3D = false) {
+                // Initialize based on mode - 2D uses canvas coordinates, 3D uses centered coordinates
+                if (use3D) {
+                    const range = 400;
+                    this.x = (Math.random() - 0.5) * range;
+                    this.y = (Math.random() - 0.5) * range;
+                    this.z = (Math.random() - 0.5) * range;
+                } else {
+                    // 2D mode - use canvas coordinates (relative to center)
+                    const cx = canvas.width / 2;
+                    const cy = canvas.height / 2;
+                    this.x = Math.random() * canvas.width - cx;
+                    this.y = Math.random() * canvas.height - cy;
+                    this.z = 0;
+                }
                 this.baseSize = Math.random() * 3 + 1;
                 this.size = this.baseSize;
                 this.speedX = Math.random() * 2 - 1;
                 this.speedY = Math.random() * 2 - 1;
+                this.speedZ = Math.random() * 2 - 1;
                 this.updateColor();
             }
             
@@ -744,110 +1619,308 @@
             }
 
             draw() {
-                ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
+                // Quantum mode visibility
+                let visibility = 1.0;
+                if (currentMode === 'quantum' && this.quantumState) {
+                    visibility = Math.sin(this.quantumState.dimensionPhase * Math.PI * 2) * 0.5 + 0.5;
+                }
+                
+                if (is3D) {
+                    // 3D projection
+                    const projected = project3D(this.x, this.y, this.z);
+                    if (projected) {
+                        // Size based on distance (depth) - farther = smaller
+                        // Use projected depth to calculate size (particles behind camera are filtered)
+                        const normalizedDepth = (projected.depth + cameraDistance) / (cameraDistance * 2);
+                        const depthFactor = 0.4 + (1 - normalizedDepth) * 0.6; // Range from 0.4 to 1.0
+                        const drawSize = this.size * depthFactor;
+                        
+                        // Opacity based on depth - farther = more transparent
+                        let opacity = Math.max(0.3, 1 - normalizedDepth * 0.7);
+                        opacity *= visibility; // Apply quantum visibility
+                        ctx.globalAlpha = opacity;
+                        
+                        ctx.fillStyle = this.color;
+                        ctx.beginPath();
+                        ctx.arc(projected.x, projected.y, drawSize, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1.0;
+                    }
+                } else {
+                    // 2D rendering (original)
+                    ctx.globalAlpha = visibility; // Apply quantum visibility
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x + centerX, this.y + centerY, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                }
             }
         }
 
-        // Create particles
-        for (let i = 0; i < particleCount; i++) {
-            particles.push(new Particle());
+        // Function to create particles
+        function createParticles(count, use3D) {
+            particles.length = 0; // Clear existing particles
+            for (let i = 0; i < count; i++) {
+                particles.push(new Particle(use3D));
+            }
+        }
+
+        // Create particles (initially in 2D mode)
+        createParticles(particleCount, false);
+
+        // 3D projection function
+        function project3D(x, y, z) {
+            // Rotate around Y axis
+            const cosY = Math.cos(cameraRotationY);
+            const sinY = Math.sin(cameraRotationY);
+            let x1 = x * cosY + z * sinY;
+            let z1 = -x * sinY + z * cosY;
+            
+            // Rotate around X axis
+            const cosX = Math.cos(cameraRotationX);
+            const sinX = Math.sin(cameraRotationX);
+            let y1 = y * cosX - z1 * sinX;
+            z1 = y * sinX + z1 * cosX;
+            
+            // Perspective projection
+            if (z1 < -cameraDistance + 100) return null; // Behind camera
+            
+            const scale = cameraDistance / (cameraDistance + z1);
+            return {
+                x: centerX + x1 * scale,
+                y: centerY + y1 * scale,
+                depth: z1
+            };
+        }
+        
+        // Project mouse position to 3D space
+        function unprojectMouse(screenX, screenY) {
+            if (!is3D) {
+                return {
+                    x: screenX - centerX,
+                    y: screenY - centerY,
+                    z: 0
+                };
+            }
+            // For 3D, project mouse to a plane at z=0 (the center plane)
+            // First, convert screen coordinates to normalized device coordinates
+            const ndcX = (screenX - centerX) / (cameraDistance);
+            const ndcY = (screenY - centerY) / (cameraDistance);
+            
+            // Reverse the perspective projection (assuming z=0 plane)
+            const worldX = ndcX * cameraDistance;
+            const worldY = ndcY * cameraDistance;
+            const worldZ = 0;
+            
+            // Reverse rotation transformations
+            // First reverse X rotation
+            const cosX = Math.cos(-cameraRotationX);
+            const sinX = Math.sin(-cameraRotationX);
+            let x1 = worldX;
+            let y1 = worldY * cosX - worldZ * sinX;
+            let z1 = worldY * sinX + worldZ * cosX;
+            
+            // Then reverse Y rotation
+            const cosY = Math.cos(-cameraRotationY);
+            const sinY = Math.sin(-cameraRotationY);
+            let x = x1 * cosY - z1 * sinY;
+            let y = y1;
+            let z = x1 * sinY + z1 * cosY;
+            
+            return { x, y, z };
         }
 
         // Mouse tracking
         window.addEventListener('mousemove', (e) => {
-            mouse.x = e.x;
-            mouse.y = e.y;
+            if (is3D && isDragging) {
+                // Rotate camera
+                const deltaX = e.clientX - lastMouseX;
+                const deltaY = e.clientY - lastMouseY;
+                cameraRotationY += deltaX * 0.01;
+                cameraRotationX += deltaY * 0.01;
+                cameraRotationX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, cameraRotationX));
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            } else {
+                // Use clientX/clientY for accurate mouse position
+                const projected = unprojectMouse(e.clientX, e.clientY);
+                mouse.x = projected.x;
+                mouse.y = projected.y;
+                mouse.z = projected.z;
+            }
         });
 
         window.addEventListener('mouseleave', () => {
             mouse.x = null;
             mouse.y = null;
+            mouse.z = null;
+            isDragging = false;
+        });
+        
+        // Mouse drag for 3D rotation
+        canvas.addEventListener('mousedown', (e) => {
+            if (is3D) {
+                isDragging = true;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            } else {
+                // Update mouse position on click in 2D mode too
+                const projected = unprojectMouse(e.clientX, e.clientY);
+                mouse.x = projected.x;
+                mouse.y = projected.y;
+                mouse.z = projected.z;
+            }
+        });
+        
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
         });
 
         // Resize handler
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            centerX = canvas.width / 2;
+            centerY = canvas.height / 2;
         });
 
         // Animation loop
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw connections
+            // Draw connections (3D aware)
             for (let i = 0; i < particles.length; i++) {
                 for (let j = i + 1; j < particles.length; j++) {
                     const dx = particles[i].x - particles[j].x;
                     const dy = particles[i].y - particles[j].y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const dz = particles[i].z - particles[j].z;
+                    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
                     // Different connection styles for different modes
                     let maxDistance = 150;
                     let baseOpacity = 0.3;
                     let lineWidth = 1.5;
+                    let shouldDraw = true;
                     
                     if (currentMode === 'galaxy') {
                         // In galaxy mode, show connections more prominently to reveal spiral structure
                         maxDistance = 120;
                         baseOpacity = 0.4;
                         lineWidth = 1;
+                    } else if (currentMode === 'crystal') {
+                        // In crystal mode, show connections to reveal lattice structure
+                        maxDistance = 30; // Only connect nearby particles in lattice
+                        baseOpacity = 0.6; // Brighter connections
+                        lineWidth = 2; // Thicker lines
+                    } else if (currentMode === 'quantum') {
+                        // In quantum mode, show entanglement connections
+                        const particleQ = particles[i].quantumState;
+                        const otherQ = particles[j].quantumState;
+                        const areEntangled = particleQ && otherQ && 
+                                           (particleQ.entanglement === particles[j] || otherQ.entanglement === particles[i]);
+                        
+                        if (areEntangled) {
+                            maxDistance = 500; // Entangled particles can be far apart
+                            baseOpacity = 0.6; // Glowing connections
+                            lineWidth = 2;
+                        } else if (distance < 80) {
+                            // Show quantum interference connections
+                            maxDistance = 80;
+                            baseOpacity = 0.2; // Subtle interference patterns
+                            lineWidth = 1;
+                        } else {
+                            shouldDraw = false; // Skip connection
+                        }
                     }
 
-                    if (distance < maxDistance) {
+                    if (shouldDraw && distance < maxDistance) {
                         const theme = themes[currentTheme];
                         const opacity = baseOpacity * (1 - distance / maxDistance);
                         ctx.strokeStyle = `rgba(${theme.connectionColor}, ${opacity})`;
                         ctx.lineWidth = lineWidth;
                         ctx.beginPath();
-                        ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(particles[j].x, particles[j].y);
-                        ctx.stroke();
+                        
+                        if (is3D) {
+                            const proj1 = project3D(particles[i].x, particles[i].y, particles[i].z);
+                            const proj2 = project3D(particles[j].x, particles[j].y, particles[j].z);
+                            if (proj1 && proj2) {
+                                ctx.moveTo(proj1.x, proj1.y);
+                                ctx.lineTo(proj2.x, proj2.y);
+                                ctx.stroke();
+                            }
+                        } else {
+                            ctx.moveTo(particles[i].x + centerX, particles[i].y + centerY);
+                            ctx.lineTo(particles[j].x + centerX, particles[j].y + centerY);
+                            ctx.stroke();
+                        }
                     }
                 }
             }
 
             // Draw black hole indicator in black hole mode
             if (currentMode === 'blackhole' && mouse.x !== null && mouse.y !== null) {
+                // Convert mouse position to screen coordinates
+                let screenX, screenY;
+                if (is3D) {
+                    const projected = project3D(mouse.x, mouse.y, mouse.z || 0);
+                    if (!projected) return;
+                    screenX = projected.x;
+                    screenY = projected.y;
+                } else {
+                    screenX = mouse.x + centerX;
+                    screenY = mouse.y + centerY;
+                }
+                
                 // Draw event horizon (dark circle)
                 const eventHorizon = 30;
-                const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, eventHorizon);
+                const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, eventHorizon);
                 gradient.addColorStop(0, 'rgba(0, 0, 0, 0.9)');
                 gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.7)');
                 gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
                 
                 ctx.fillStyle = gradient;
                 ctx.beginPath();
-                ctx.arc(mouse.x, mouse.y, eventHorizon, 0, Math.PI * 2);
+                ctx.arc(screenX, screenY, eventHorizon, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Draw accretion disk (glowing ring)
                 const ringRadius = eventHorizon + 10;
-                const ringGradient = ctx.createRadialGradient(mouse.x, mouse.y, ringRadius - 5, mouse.x, mouse.y, ringRadius + 5);
+                const ringGradient = ctx.createRadialGradient(screenX, screenY, ringRadius - 5, screenX, screenY, ringRadius + 5);
                 ringGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
                 ringGradient.addColorStop(0.5, 'rgba(150, 150, 255, 0.5)');
                 ringGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
                 
                 ctx.fillStyle = ringGradient;
                 ctx.beginPath();
-                ctx.arc(mouse.x, mouse.y, ringRadius + 5, 0, Math.PI * 2);
+                ctx.arc(screenX, screenY, ringRadius + 5, 0, Math.PI * 2);
                 ctx.fill();
             }
 
             // Draw galaxy center indicator in galaxy mode
             if (currentMode === 'galaxy' && mouse.x !== null && mouse.y !== null) {
+                // Convert mouse position to screen coordinates
+                let screenX, screenY;
+                if (is3D) {
+                    const projected = project3D(mouse.x, mouse.y, mouse.z || 0);
+                    if (!projected) return;
+                    screenX = projected.x;
+                    screenY = projected.y;
+                } else {
+                    screenX = mouse.x + centerX;
+                    screenY = mouse.y + centerY;
+                }
+                
                 // Draw galactic nucleus (bright center)
                 const nucleusRadius = 15;
-                const nucleusGradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, nucleusRadius);
+                const nucleusGradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, nucleusRadius);
                 nucleusGradient.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
                 nucleusGradient.addColorStop(0.5, 'rgba(255, 200, 100, 0.6)');
                 nucleusGradient.addColorStop(1, 'rgba(255, 150, 50, 0)');
                 
                 ctx.fillStyle = nucleusGradient;
                 ctx.beginPath();
-                ctx.arc(mouse.x, mouse.y, nucleusRadius, 0, Math.PI * 2);
+                ctx.arc(screenX, screenY, nucleusRadius, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Draw spiral arm hints (subtle orbital rings)
@@ -858,19 +1931,31 @@
                     ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
                     ctx.lineWidth = 1;
                     ctx.beginPath();
-                    ctx.arc(mouse.x, mouse.y, ringRadius, 0, Math.PI * 2);
+                    ctx.arc(screenX, screenY, ringRadius, 0, Math.PI * 2);
                     ctx.stroke();
                 }
             }
 
             // Draw vortex center indicator in vortex mode
             if (currentMode === 'vortex' && mouse.x !== null && mouse.y !== null) {
+                // Convert mouse position to screen coordinates
+                let screenX, screenY;
+                if (is3D) {
+                    const projected = project3D(mouse.x, mouse.y, mouse.z || 0);
+                    if (!projected) return;
+                    screenX = projected.x;
+                    screenY = projected.y;
+                } else {
+                    screenX = mouse.x + centerX;
+                    screenY = mouse.y + centerY;
+                }
+                
                 const time = Date.now() * 0.002;
                 const vortexRadius = 50;
                 
                 // Draw swirling center (animated spiral)
                 ctx.save();
-                ctx.translate(mouse.x, mouse.y);
+                ctx.translate(screenX, screenY);
                 ctx.rotate(time);
                 
                 // Draw spiral arms
@@ -895,16 +1980,145 @@
                 ctx.restore();
                 
                 // Draw center core
-                const coreGradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 20);
+                const coreGradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, 20);
                 coreGradient.addColorStop(0, 'rgba(100, 150, 255, 0.6)');
                 coreGradient.addColorStop(1, 'rgba(100, 150, 255, 0)');
                 ctx.fillStyle = coreGradient;
                 ctx.beginPath();
-                ctx.arc(mouse.x, mouse.y, 20, 0, Math.PI * 2);
+                ctx.arc(screenX, screenY, 20, 0, Math.PI * 2);
                 ctx.fill();
             }
 
+            // Draw crystal center indicator in crystal mode
+            if (currentMode === 'crystal' && mouse.x !== null && mouse.y !== null) {
+                // Convert mouse position to screen coordinates
+                let screenX, screenY;
+                if (is3D) {
+                    const projected = project3D(mouse.x, mouse.y, mouse.z || 0);
+                    if (!projected) {
+                        // Skip drawing if behind camera, but continue with animation
+                        screenX = null;
+                        screenY = null;
+                    } else {
+                        screenX = projected.x;
+                        screenY = projected.y;
+                    }
+                } else {
+                    screenX = mouse.x + centerX;
+                    screenY = mouse.y + centerY;
+                }
+                
+                if (screenX === null || screenY === null) {
+                    // Skip drawing but continue animation
+                } else {
+                
+                // Draw crystal core (geometric shape)
+                const coreRadius = 20;
+                const time = Date.now() * 0.001;
+                
+                ctx.save();
+                ctx.translate(screenX, screenY);
+                ctx.rotate(time);
+                
+                // Draw hexagonal crystal shape
+                ctx.strokeStyle = 'rgba(200, 220, 255, 0.8)';
+                ctx.fillStyle = 'rgba(150, 180, 255, 0.4)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (i * Math.PI) / 3;
+                    const x = Math.cos(angle) * coreRadius;
+                    const y = Math.sin(angle) * coreRadius;
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                ctx.restore();
+                }
+            }
+
+            // Draw quantum field indicator in quantum mode
+            if (currentMode === 'quantum' && mouse.x !== null && mouse.y !== null) {
+                // Convert mouse position to screen coordinates
+                let screenX, screenY;
+                if (is3D) {
+                    const projected = project3D(mouse.x, mouse.y, mouse.z || 0);
+                    if (!projected) {
+                        screenX = null;
+                        screenY = null;
+                    } else {
+                        screenX = projected.x;
+                        screenY = projected.y;
+                    }
+                } else {
+                    screenX = mouse.x + centerX;
+                    screenY = mouse.y + centerY;
+                }
+                
+                if (screenX !== null && screenY !== null) {
+                    const time = Date.now() * 0.001;
+                    
+                    // Draw quantum field (probability cloud)
+                    const fieldRadius = 100;
+                    const gradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, fieldRadius);
+                    gradient.addColorStop(0, 'rgba(150, 100, 255, 0.6)');
+                    gradient.addColorStop(0.5, 'rgba(200, 150, 255, 0.3)');
+                    gradient.addColorStop(1, 'rgba(100, 50, 255, 0)');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, fieldRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Draw probability waves (concentric rings)
+                    ctx.strokeStyle = 'rgba(200, 150, 255, 0.4)';
+                    ctx.lineWidth = 2;
+                    for (let i = 1; i <= 3; i++) {
+                        const waveRadius = 30 + i * 20 + Math.sin(time * 2 + i) * 5;
+                        ctx.beginPath();
+                        ctx.arc(screenX, screenY, waveRadius, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                    
+                    // Draw quantum core (pulsing)
+                    const coreRadius = 15 + Math.sin(time * 3) * 5;
+                    const coreGradient = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, coreRadius);
+                    coreGradient.addColorStop(0, 'rgba(255, 200, 255, 0.9)');
+                    coreGradient.addColorStop(1, 'rgba(150, 100, 255, 0.5)');
+                    ctx.fillStyle = coreGradient;
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, coreRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Draw quantum spin indicators
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < 4; i++) {
+                        const angle = (time * 2 + i * Math.PI / 2) % (Math.PI * 2);
+                        const startX = screenX + Math.cos(angle) * 25;
+                        const startY = screenY + Math.sin(angle) * 25;
+                        const endX = screenX + Math.cos(angle) * 40;
+                        const endY = screenY + Math.sin(angle) * 40;
+                        ctx.beginPath();
+                        ctx.moveTo(startX, startY);
+                        ctx.lineTo(endX, endY);
+                        ctx.stroke();
+                    }
+                }
+            }
+
             // Update and draw particles
+            if (particles.length === 0) {
+            // Safety: recreate particles if array is empty
+            createParticles(particleCount, is3D);
+            }
+            
             particles.forEach(particle => {
                 particle.update();
                 particle.draw();
@@ -912,6 +2126,9 @@
 
             requestAnimationFrame(animate);
         }
+        
+        // Start animation
+        animate();
 
         // Theme switching
         function setTheme(index) {
@@ -1005,24 +2222,30 @@
         function setMode(modeKey) {
             if (!modes[modeKey]) return;
             
-            // If switching modes, reset particle states to prevent velocity carryover
-            if (previousMode !== modeKey) {
-                particles.forEach(particle => {
-                    // Normalize velocities to prevent extreme speeds from previous mode
-                    const currentSpeed = Math.sqrt(particle.speedX * particle.speedX + particle.speedY * particle.speedY);
-                    const maxInitialSpeed = 3; // Maximum speed for fresh start
-                    
-                    if (currentSpeed > maxInitialSpeed) {
-                        // Scale down excessive velocities
-                        const scale = maxInitialSpeed / currentSpeed;
-                        particle.speedX *= scale;
-                        particle.speedY *= scale;
+                    // If switching modes, reset particle states to prevent velocity carryover
+                    if (previousMode !== modeKey) {
+                        particles.forEach(particle => {
+                            // Normalize velocities to prevent extreme speeds from previous mode (3D aware)
+                            const currentSpeed = Math.sqrt(particle.speedX * particle.speedX + particle.speedY * particle.speedY + particle.speedZ * particle.speedZ);
+                            const maxInitialSpeed = 3; // Maximum speed for fresh start
+                            
+                            if (currentSpeed > maxInitialSpeed) {
+                                // Scale down excessive velocities
+                                const scale = maxInitialSpeed / currentSpeed;
+                                particle.speedX *= scale;
+                                particle.speedY *= scale;
+                                particle.speedZ *= scale;
+                            }
+                            
+                            // Reset size to base size
+                            particle.size = particle.baseSize;
+                            
+                            // Clear quantum state when switching away from quantum mode
+                            if (previousMode === 'quantum' && modeKey !== 'quantum') {
+                                particle.quantumState = null;
+                            }
+                        });
                     }
-                    
-                    // Reset size to base size
-                    particle.size = particle.baseSize;
-                });
-            }
             
             previousMode = currentMode;
             currentMode = modeKey;
@@ -1037,7 +2260,73 @@
         // Initialize mode dropdown
         populateModeDropdown();
 
-        animate();
+        // 3D toggle functionality
+        const toggle3D = document.getElementById('toggle3D');
+        toggle3D.addEventListener('click', () => {
+            is3D = !is3D;
+            toggle3D.textContent = `3D: ${is3D ? 'ON' : 'OFF'}`;
+            toggle3D.classList.toggle('active', is3D);
+            
+            // Reset camera rotation when toggling
+            if (!is3D) {
+                cameraRotationX = 0;
+                cameraRotationY = 0;
+            }
+            
+            // Reinitialize particles for the new mode
+            createParticles(particleCount, is3D);
+        });
+        
+        // Intensity input
+        const intensityInput = document.getElementById('intensityInput');
+        intensityInput.addEventListener('input', (e) => {
+            let value = parseFloat(e.target.value);
+            // Only enforce minimum, allow unlimited maximum
+            if (isNaN(value) || value < 0.1) {
+                value = 0.1;
+                e.target.value = value.toFixed(1);
+            }
+            intensityFactor = value;
+        });
+        
+        intensityInput.addEventListener('blur', (e) => {
+            // On blur, ensure value is valid and formatted
+            let value = parseFloat(e.target.value);
+            if (isNaN(value) || value < 0.1) {
+                value = 0.1;
+            }
+            intensityFactor = value;
+            // Format to 1 decimal place for display
+            e.target.value = value.toFixed(1);
+        });
+        
+        intensityInput.addEventListener('keydown', (e) => {
+            // Allow Enter key to blur and apply value
+            if (e.key === 'Enter') {
+                e.target.blur();
+            }
+        });
+        
+        // Particle count controls
+        const decreaseParticles = document.getElementById('decreaseParticles');
+        const increaseParticles = document.getElementById('increaseParticles');
+        const particleCountValue = document.getElementById('particleCountValue');
+        
+        decreaseParticles.addEventListener('click', () => {
+            if (particleCount > 10) {
+                particleCount = Math.max(10, particleCount - 10);
+                particleCountValue.textContent = particleCount;
+                createParticles(particleCount, is3D);
+            }
+        });
+        
+        increaseParticles.addEventListener('click', () => {
+            if (particleCount < 500) {
+                particleCount = Math.min(500, particleCount + 10);
+                particleCountValue.textContent = particleCount;
+                createParticles(particleCount, is3D);
+            }
+        });
     </script>
 </body>
 </html>
