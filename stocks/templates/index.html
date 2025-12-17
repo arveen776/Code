@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Trading Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- Portfolio Section -->
+            <div class="portfolio-section">
+                <div class="section-header">
+                    <h2>Portfolio Value</h2>
+                </div>
+                <div class="portfolio-value" id="total-value">$10,000.00</div>
+                <div class="portfolio-stats">
+                    <div class="stat-row">
+                        <span class="stat-label">Cash</span>
+                        <span class="stat-value" id="cash-value">$10,000.00</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Holdings</span>
+                        <span class="stat-value" id="holdings-value">$0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Holdings Section -->
+            <div class="holdings-section">
+                <div class="section-header">
+                    <h2>Holdings</h2>
+                </div>
+                <div class="holdings-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Shares</th>
+                                <th>Price</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="holdings-body">
+                            <tr><td colspan="4" class="empty-message">No holdings</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Search Bar -->
+            <div class="search-bar">
+                <div class="search-section">
+                    <label for="stock-symbol">Symbol</label>
+                    <div class="search-input-wrapper">
+                        <input type="text" id="stock-symbol" placeholder="e.g., AAPL" />
+                        <button id="search-btn" class="btn btn-primary">Search</button>
+                    </div>
+                </div>
+                <div class="stock-info">
+                    <span id="stock-name"></span>
+                    <span id="stock-price"></span>
+                </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="chart-section">
+                <div class="chart-header">
+                    <div class="timeframe-controls">
+                        <label>Timeframe</label>
+                        <div class="timeframe-buttons">
+                            <button class="timeframe-btn active" data-period="1d" data-interval="1m">1m</button>
+                            <button class="timeframe-btn" data-period="1d" data-interval="5m">5m</button>
+                            <button class="timeframe-btn" data-period="5d" data-interval="10m">10m</button>
+                            <button class="timeframe-btn" data-period="60d" data-interval="30m">30m</button>
+                        </div>
+                    </div>
+                    <div class="chart-controls">
+                        <button id="refresh-btn" class="btn btn-secondary">🔄 Refresh</button>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="auto-refresh" checked />
+                            Auto-refresh
+                        </label>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div id="stock-chart"></div>
+                </div>
+            </div>
+
+            <!-- Trading Panel -->
+            <div class="trading-panel">
+                <div class="buy-section">
+                    <h3 class="section-title">BUY</h3>
+                    <div class="trading-form">
+                        <label for="buy-quantity">Quantity</label>
+                        <div class="input-group">
+                            <input type="number" id="buy-quantity" placeholder="0" />
+                            <button id="buy-btn" class="btn btn-success">BUY</button>
+                        </div>
+                        <div class="info-text" id="buy-info"></div>
+                    </div>
+                </div>
+                <div class="sell-section">
+                    <h3 class="section-title">SELL</h3>
+                    <div class="trading-form">
+                        <label for="sell-quantity">Quantity</label>
+                        <div class="input-group">
+                            <input type="number" id="sell-quantity" placeholder="0" />
+                            <button id="sell-btn" class="btn btn-danger">SELL</button>
+                        </div>
+                        <div class="info-text" id="sell-info"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trade History -->
+            <div class="history-section">
+                <div class="section-header">
+                    <h2>Trade History</h2>
+                </div>
+                <div class="history-list" id="history-list">
+                    <div class="empty-message">No trades yet</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+

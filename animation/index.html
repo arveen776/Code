@@ -351,6 +351,16 @@
         </div>
     </div>
     
+    <div class="effects-selector">
+        <div class="mode-btn active" id="effectsBtn">
+            <span>Effects: <span id="currentEffectName">None</span></span>
+            <span style="font-size: 0.7rem;">▼</span>
+        </div>
+        <div class="mode-dropdown" id="effectsDropdown">
+            <!-- Effects will be populated here -->
+        </div>
+    </div>
+    
     <div class="theme-selector">
         <div class="theme-btn active" data-theme="0" style="background: linear-gradient(135deg, #667eea, #764ba2);" title="Purple (1)"></div>
         <div class="theme-btn" data-theme="1" style="background: linear-gradient(135deg, #00c9ff, #92fe9d);" title="Ocean (2)"></div>
@@ -1564,17 +1574,187 @@
         let currentMode = 'normal';
         let currentEffect = 'none';
         
+        // Audio system
+        let audioContext = null;
+        let masterGain = null;
+        let soundEnabled = true;
+        let lastSoundTime = 0;
+        const soundCooldown = 0.05; // Minimum time between sounds (seconds)
+        
+        // Initialize audio context
+        let audioInitialized = false;
+        function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                masterGain = audioContext.createGain();
+                masterGain.gain.value = 0.3; // Master volume
+                masterGain.connect(audioContext.destination);
+                audioInitialized = true;
+            } catch (e) {
+                console.warn('Audio not supported:', e);
+                soundEnabled = false;
+            }
+        }
+        
+        // Ensure audio is initialized (browser requires user interaction)
+        function ensureAudioInitialized() {
+            if (!audioInitialized && soundEnabled) {
+                try {
+                    initAudio();
+                } catch (e) {
+                    // Silently fail if audio can't be initialized
+                    soundEnabled = false;
+                }
+            }
+        }
+        
+        // Generate realistic particle interaction sound
+        function playParticleSound(particle1, particle2, distance, intensity = 1.0) {
+            if (!soundEnabled || !audioContext || !masterGain || !audioInitialized) return;
+            
+            try {
+                const now = audioContext.currentTime;
+                if (now - lastSoundTime < soundCooldown) return;
+                lastSoundTime = now;
+                
+                // Create oscillator for the sound
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                // Calculate frequency based on distance and particle properties
+                const baseFreq = 200 + (distance * 2);
+                const freqVariation = 50 * Math.random();
+                oscillator.frequency.value = Math.min(baseFreq + freqVariation, 2000);
+                
+                // Set waveform based on mode
+                let waveform = 'sine';
+                if (currentMode === 'blackhole') waveform = 'sawtooth';
+                else if (currentMode === 'quantum') waveform = 'square';
+                else if (currentMode === 'vortex') waveform = 'triangle';
+                oscillator.type = waveform;
+                
+                // Create envelope
+                const attackTime = 0.01;
+                const decayTime = 0.1;
+                const sustainLevel = 0.3;
+                const releaseTime = 0.2;
+                
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(intensity * 0.15, now + attackTime);
+                gainNode.gain.linearRampToValueAtTime(intensity * sustainLevel * 0.1, now + attackTime + decayTime);
+                gainNode.gain.setValueAtTime(intensity * sustainLevel * 0.1, now + attackTime + decayTime + releaseTime);
+                gainNode.gain.linearRampToValueAtTime(0, now + attackTime + decayTime + releaseTime + releaseTime);
+                
+                // Add subtle reverb/delay effect
+                const delay = audioContext.createDelay();
+                delay.delayTime.value = 0.1;
+                const delayGain = audioContext.createGain();
+                delayGain.gain.value = 0.2;
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(masterGain);
+                gainNode.connect(delay);
+                delay.connect(delayGain);
+                delayGain.connect(masterGain);
+                
+                oscillator.start(now);
+                oscillator.stop(now + attackTime + decayTime + releaseTime * 2);
+            } catch (e) {
+                // Silently fail if audio error occurs
+            }
+        }
+        
+        // Generate ambient sound based on particle movement
+        function playAmbientSound() {
+            if (!soundEnabled || !audioContext || !masterGain || !audioInitialized) return;
+            
+            try {
+                const now = audioContext.currentTime;
+                
+                // Create low-frequency ambient tone
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                const filter = audioContext.createBiquadFilter();
+                
+                // Calculate average particle speed for frequency modulation
+                let avgSpeed = 0;
+                if (particles.length > 0) {
+                    let totalSpeed = 0;
+                    for (let i = 0; i < Math.min(particles.length, 10); i++) {
+                        const speed = Math.sqrt(
+                            particles[i].speedX * particles[i].speedX +
+                            particles[i].speedY * particles[i].speedY +
+                            particles[i].speedZ * particles[i].speedZ
+                        );
+                        totalSpeed += speed;
+                    }
+                    avgSpeed = totalSpeed / Math.min(particles.length, 10);
+                }
+                
+                oscillator.frequency.value = 60 + avgSpeed * 10; // Base frequency 60Hz, modulated by speed
+                oscillator.type = 'sine';
+                
+                filter.type = 'lowpass';
+                filter.frequency.value = 200;
+                filter.Q.value = 1;
+                
+                gainNode.gain.value = 0.05 * intensityFactor; // Very subtle ambient
+                
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(masterGain);
+                
+                oscillator.start(now);
+                oscillator.stop(now + 0.5);
+            } catch (e) {
+                // Silently fail if audio error occurs
+            }
+        }
+        
+        // Generate sound for mouse interaction
+        function playMouseInteractionSound(distance, strength) {
+            if (!soundEnabled || !audioContext || !masterGain || !audioInitialized) return;
+            
+            try {
+                const now = audioContext.currentTime;
+                if (now - lastSoundTime < soundCooldown * 2) return;
+                
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                // Frequency based on distance (closer = higher pitch)
+                const freq = 300 + (400 - distance) * 2;
+                oscillator.frequency.value = Math.max(200, Math.min(freq, 1500));
+                oscillator.type = 'sine';
+                
+                const attackTime = 0.02;
+                const releaseTime = 0.3;
+                
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(strength * 0.2, now + attackTime);
+                gainNode.gain.linearRampToValueAtTime(0, now + attackTime + releaseTime);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(masterGain);
+                
+                oscillator.start(now);
+                oscillator.stop(now + attackTime + releaseTime);
+            } catch (e) {
+                // Silently fail if audio error occurs
+            }
+        }
+        
         // Visual effects definitions
         const effects = {
-            none: { name: 'None', draw: null },
-            trails: { name: 'Trails', draw: 'trails' },
-            glow: { name: 'Glow', draw: 'glow' },
-            explosion: { name: 'Explosion', draw: 'explosion' },
-            wave: { name: 'Wave', draw: 'wave' },
-            sparkle: { name: 'Sparkle', draw: 'sparkle' },
-            plasma: { name: 'Plasma', draw: 'plasma' },
-            neon: { name: 'Neon', draw: 'neon' },
-            fire: { name: 'Fire', draw: 'fire' }
+            none: { name: 'None' },
+            trails: { name: 'Trails' },
+            glow: { name: 'Glow' },
+            explosion: { name: 'Explosion' },
+            wave: { name: 'Wave' },
+            sparkle: { name: 'Sparkle' },
+            plasma: { name: 'Plasma' },
+            neon: { name: 'Neon' },
+            fire: { name: 'Fire' }
         };
 
         class Particle {
@@ -1599,6 +1779,15 @@
                 this.speedY = Math.random() * 2 - 1;
                 this.speedZ = Math.random() * 2 - 1;
                 this.updateColor();
+                
+                // Trail tracking for effects
+                this.trail = [];
+                this.maxTrailLength = 15;
+                this.effectPhase = Math.random() * Math.PI * 2;
+                this.effectSpeed = 0.05 + Math.random() * 0.05;
+                
+                // Cache RGB values for glow effect (performance optimization)
+                this.cachedRGB = null;
             }
             
             updateColor() {
@@ -1609,6 +1798,41 @@
                 const lightness = isDark ? 55 + Math.random() * 25 : 70;
                 const saturation = isDark ? 75 + Math.random() * 25 : 70;
                 this.color = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+                // Clear RGB cache when color changes
+                this.cachedRGB = null;
+            }
+            
+            // Convert HSL to RGB (cached for performance)
+            getRGB() {
+                if (this.cachedRGB) return this.cachedRGB;
+                
+                const hslMatch = this.color.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+                if (!hslMatch) {
+                    this.cachedRGB = { r: 255, g: 255, b: 255 };
+                    return this.cachedRGB;
+                }
+                
+                const h = parseInt(hslMatch[1]) / 360;
+                const s = parseInt(hslMatch[2]) / 100;
+                const l = parseInt(hslMatch[3]) / 100;
+                const c = (1 - Math.abs(2 * l - 1)) * s;
+                const x = c * (1 - Math.abs((h * 6) % 2 - 1));
+                const m = l - c / 2;
+                let r, g, b;
+                
+                if (h < 1/6) { r = c; g = x; b = 0; }
+                else if (h < 2/6) { r = x; g = c; b = 0; }
+                else if (h < 3/6) { r = 0; g = c; b = x; }
+                else if (h < 4/6) { r = 0; g = x; b = c; }
+                else if (h < 5/6) { r = x; g = 0; b = c; }
+                else { r = c; g = 0; b = x; }
+                
+                this.cachedRGB = {
+                    r: Math.round((r + m) * 255),
+                    g: Math.round((g + m) * 255),
+                    b: Math.round((b + m) * 255)
+                };
+                return this.cachedRGB;
             }
 
             update() {
@@ -1625,36 +1849,337 @@
                     visibility = Math.sin(this.quantumState.dimensionPhase * Math.PI * 2) * 0.5 + 0.5;
                 }
                 
+                let screenX, screenY, drawSize, opacity;
+                
                 if (is3D) {
                     // 3D projection
                     const projected = project3D(this.x, this.y, this.z);
-                    if (projected) {
-                        // Size based on distance (depth) - farther = smaller
-                        // Use projected depth to calculate size (particles behind camera are filtered)
-                        const normalizedDepth = (projected.depth + cameraDistance) / (cameraDistance * 2);
-                        const depthFactor = 0.4 + (1 - normalizedDepth) * 0.6; // Range from 0.4 to 1.0
-                        const drawSize = this.size * depthFactor;
-                        
-                        // Opacity based on depth - farther = more transparent
-                        let opacity = Math.max(0.3, 1 - normalizedDepth * 0.7);
-                        opacity *= visibility; // Apply quantum visibility
-                        ctx.globalAlpha = opacity;
-                        
-                        ctx.fillStyle = this.color;
-                        ctx.beginPath();
-                        ctx.arc(projected.x, projected.y, drawSize, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.globalAlpha = 1.0;
-                    }
+                    if (!projected) return; // Behind camera
+                    
+                    screenX = projected.x;
+                    screenY = projected.y;
+                    const normalizedDepth = (projected.depth + cameraDistance) / (cameraDistance * 2);
+                    const depthFactor = 0.4 + (1 - normalizedDepth) * 0.6;
+                    drawSize = this.size * depthFactor;
+                    opacity = Math.max(0.3, 1 - normalizedDepth * 0.7) * visibility;
                 } else {
-                    // 2D rendering (original)
-                    ctx.globalAlpha = visibility; // Apply quantum visibility
+                    // 2D rendering
+                    screenX = this.x + centerX;
+                    screenY = this.y + centerY;
+                    drawSize = this.size;
+                    opacity = 1.0 * visibility;
+                }
+                
+                // Update trail
+                if (currentEffect === 'trails' || currentEffect === 'plasma' || currentEffect === 'fire') {
+                    this.trail.push({ x: screenX, y: screenY, size: drawSize, opacity: opacity });
+                    if (this.trail.length > this.maxTrailLength) {
+                        this.trail.shift();
+                    }
+                }
+                
+                // Draw effect-specific visuals
+                this.drawEffect(screenX, screenY, drawSize, opacity);
+            }
+            
+            drawEffect(x, y, size, opacity) {
+                try {
+                    // Use frame time passed from animate function (performance optimization)
+                    const time = window.frameTime || Date.now() * 0.001;
+                    const effect = currentEffect || 'none';
+                    
+                    switch (effect) {
+                        case 'trails':
+                            this.drawTrails(x, y, size, opacity);
+                            break;
+                        case 'glow':
+                            this.drawGlow(x, y, size, opacity);
+                            break;
+                        case 'explosion':
+                            this.drawExplosion(x, y, size, opacity, time);
+                            break;
+                        case 'wave':
+                            this.drawWave(x, y, size, opacity, time);
+                            break;
+                        case 'sparkle':
+                            this.drawSparkle(x, y, size, opacity, time);
+                            break;
+                        case 'plasma':
+                            this.drawPlasma(x, y, size, opacity);
+                            break;
+                        case 'neon':
+                            this.drawNeon(x, y, size, opacity);
+                            break;
+                        case 'fire':
+                            this.drawFire(x, y, size, opacity, time);
+                            break;
+                        default:
+                            // Default drawing
+                            ctx.globalAlpha = opacity;
+                            ctx.fillStyle = this.color;
+                            ctx.beginPath();
+                            ctx.arc(x, y, size, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.globalAlpha = 1.0;
+                    }
+                } catch (e) {
+                    // Fallback to default drawing on error
+                    console.error('Effect drawing error:', e);
+                    ctx.globalAlpha = opacity;
                     ctx.fillStyle = this.color;
                     ctx.beginPath();
-                    ctx.arc(this.x + centerX, this.y + centerY, this.size, 0, Math.PI * 2);
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
                     ctx.fill();
                     ctx.globalAlpha = 1.0;
                 }
+            }
+            
+            drawTrails(x, y, size, opacity) {
+                // Draw trail (optimized - single stroke with gradient)
+                if (this.trail.length > 1) {
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = size * 0.5;
+                    ctx.globalAlpha = opacity * 0.6;
+                    ctx.beginPath();
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let i = 1; i < this.trail.length; i++) {
+                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    }
+                    ctx.stroke();
+                }
+                
+                // Draw particle
+                ctx.globalAlpha = opacity;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+            
+            drawGlow(x, y, size, opacity) {
+                // Use cached RGB (performance optimization)
+                const rgb = this.getRGB();
+                
+                // Outer glow
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, size * 3);
+                gradient.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`);
+                gradient.addColorStop(0.3, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity * 0.5})`);
+                gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+                
+                ctx.globalAlpha = opacity * 0.6;
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, size * 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Inner glow
+                const innerGradient = ctx.createRadialGradient(x, y, 0, x, y, size * 1.5);
+                innerGradient.addColorStop(0, `rgba(255, 255, 255, ${opacity * 0.8})`);
+                innerGradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`);
+                
+                ctx.globalAlpha = opacity;
+                ctx.fillStyle = innerGradient;
+                ctx.beginPath();
+                ctx.arc(x, y, size * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Core
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+            
+            drawExplosion(x, y, size, opacity, time) {
+                const phase = this.effectPhase + time * this.effectSpeed * 5;
+                const burstSize = size * (1 + Math.sin(phase) * 0.5);
+                
+                // Explosion rays
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2 + phase;
+                    const rayLength = burstSize * 2;
+                    const rayX = x + Math.cos(angle) * rayLength;
+                    const rayY = y + Math.sin(angle) * rayLength;
+                    
+                    const gradient = ctx.createLinearGradient(x, y, rayX, rayY);
+                    gradient.addColorStop(0, this.color);
+                    gradient.addColorStop(1, this.color.replace('1)', '0)'));
+                    
+                    ctx.globalAlpha = opacity * 0.5;
+                    ctx.strokeStyle = gradient;
+                    ctx.lineWidth = size * 0.3;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(rayX, rayY);
+                    ctx.stroke();
+                }
+                
+                // Core
+                ctx.globalAlpha = opacity;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(x, y, burstSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+            
+            drawWave(x, y, size, opacity, time) {
+                const phase = this.effectPhase + time * this.effectSpeed * 3;
+                const waveRadius = size * (1.5 + Math.sin(phase) * 0.5);
+                
+                // Wave rings
+                for (let i = 0; i < 3; i++) {
+                    const ringPhase = phase + i * 0.5;
+                    const ringSize = waveRadius + Math.sin(ringPhase) * size;
+                    const ringOpacity = opacity * (0.3 - i * 0.1) * Math.abs(Math.sin(ringPhase));
+                    
+                    ctx.globalAlpha = ringOpacity;
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = size * 0.2;
+                    ctx.beginPath();
+                    ctx.arc(x, y, ringSize, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                
+                // Core
+                ctx.globalAlpha = opacity;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+            
+            drawSparkle(x, y, size, opacity, time) {
+                const phase = this.effectPhase + time * this.effectSpeed * 10;
+                const sparkleIntensity = Math.abs(Math.sin(phase));
+                
+                // Sparkle rays
+                for (let i = 0; i < 4; i++) {
+                    const angle = (i / 4) * Math.PI * 2 + phase;
+                    const rayLength = size * (2 + sparkleIntensity);
+                    const rayX = x + Math.cos(angle) * rayLength;
+                    const rayY = y + Math.sin(angle) * rayLength;
+                    
+                    ctx.globalAlpha = opacity * sparkleIntensity * 0.8;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 1)';
+                    ctx.lineWidth = size * 0.2;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(rayX, rayY);
+                    ctx.stroke();
+                }
+                
+                // Core with pulsing
+                ctx.globalAlpha = opacity * (0.7 + sparkleIntensity * 0.3);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(x, y, size * (0.8 + sparkleIntensity * 0.2), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+            
+            drawPlasma(x, y, size, opacity) {
+                // Draw trail as plasma stream (optimized)
+                if (this.trail.length > 1) {
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = size * 0.8;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.globalAlpha = opacity * 0.8;
+                    ctx.beginPath();
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let i = 1; i < this.trail.length; i++) {
+                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    }
+                    ctx.stroke();
+                }
+                
+                // Plasma core - fix HSL color replacement bug
+                const rgb = this.getRGB();
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, size * 2);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                gradient.addColorStop(0.5, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`);
+                gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0)`);
+                
+                ctx.globalAlpha = opacity;
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, size * 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+            
+            drawNeon(x, y, size, opacity) {
+                // Neon outline (optimized - use multiple strokes instead of expensive shadow)
+                const rgb = this.getRGB();
+                ctx.globalAlpha = opacity;
+                
+                // Outer glow stroke
+                ctx.strokeStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity * 0.3})`;
+                ctx.lineWidth = size * 0.5;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Main outline
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = size * 0.3;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Inner glow
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, size);
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${opacity * 0.9})`);
+                gradient.addColorStop(1, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`);
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, y, size * 0.7, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.globalAlpha = 1.0;
+            }
+            
+            drawFire(x, y, size, opacity, time) {
+                const phase = this.effectPhase + time * this.effectSpeed * 8;
+                
+                // Draw trail as fire
+                if (this.trail.length > 1) {
+                    for (let i = 0; i < this.trail.length - 1; i++) {
+                        const point1 = this.trail[i];
+                        const point2 = this.trail[i + 1];
+                        const progress = i / this.trail.length;
+                        const trailOpacity = progress * opacity * 0.7;
+                        const trailSize = size * (1 - progress * 0.5);
+                        
+                        const gradient = ctx.createLinearGradient(point1.x, point1.y, point2.x, point2.y);
+                        gradient.addColorStop(0, `rgba(255, ${200 - progress * 100}, 0, ${trailOpacity})`);
+                        gradient.addColorStop(1, `rgba(255, ${100 - progress * 50}, 0, ${trailOpacity * 0.5})`);
+                        
+                        ctx.globalAlpha = trailOpacity;
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.arc(point1.x, point1.y, trailSize, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+                
+                // Fire core
+                const coreGradient = ctx.createRadialGradient(x, y, 0, x, y, size * 1.5);
+                coreGradient.addColorStop(0, `rgba(255, 255, ${150 + Math.sin(phase) * 50}, ${opacity})`);
+                coreGradient.addColorStop(0.5, `rgba(255, ${150 + Math.sin(phase) * 50}, 0, ${opacity * 0.8})`);
+                coreGradient.addColorStop(1, `rgba(255, 50, 0, 0)`);
+                
+                ctx.globalAlpha = opacity;
+                ctx.fillStyle = coreGradient;
+                ctx.beginPath();
+                ctx.arc(x, y, size * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
             }
         }
 
@@ -1788,6 +2313,9 @@
         // Animation loop
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Calculate time once per frame (performance optimization)
+            const frameTime = Date.now() * 0.001;
 
             // Draw connections (3D aware)
             for (let i = 0; i < particles.length; i++) {
@@ -1853,6 +2381,12 @@
                             ctx.moveTo(particles[i].x + centerX, particles[i].y + centerY);
                             ctx.lineTo(particles[j].x + centerX, particles[j].y + centerY);
                             ctx.stroke();
+                        }
+                        
+                        // Play sound for particle connections (occasionally, to avoid overload)
+                        if (Math.random() < 0.02 && distance < maxDistance * 0.5) {
+                            ensureAudioInitialized();
+                            playParticleSound(particles[i], particles[j], distance, intensityFactor);
                         }
                     }
                 }
@@ -2119,6 +2653,37 @@
             createParticles(particleCount, is3D);
             }
             
+            // Store frame time globally for particle effects
+            window.frameTime = frameTime;
+            
+            // Ensure audio is initialized
+            ensureAudioInitialized();
+            
+            // Play ambient sound occasionally
+            if (Math.random() < 0.1) {
+                playAmbientSound();
+            }
+            
+            // Track mouse interaction for sound
+            if (mouse.x !== null && mouse.y !== null) {
+                let closestDistance = Infinity;
+                for (let particle of particles) {
+                    const dx = mouse.x - particle.x;
+                    const dy = mouse.y - particle.y;
+                    const dz = (mouse.z !== null ? mouse.z : 0) - particle.z;
+                    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                    if (dist < closestDistance) {
+                        closestDistance = dist;
+                    }
+                }
+                
+                // Play interaction sound when mouse is close to particles
+                if (closestDistance < 100 && Math.random() < 0.3) {
+                    const strength = (100 - closestDistance) / 100;
+                    playMouseInteractionSound(closestDistance, strength * intensityFactor);
+                }
+            }
+            
             particles.forEach(particle => {
                 particle.update();
                 particle.draw();
@@ -2259,6 +2824,67 @@
         
         // Initialize mode dropdown
         populateModeDropdown();
+        
+        // Effects selector
+        const effectsBtn = document.getElementById('effectsBtn');
+        const effectsDropdown = document.getElementById('effectsDropdown');
+        const currentEffectName = document.getElementById('currentEffectName');
+        
+        function populateEffectsDropdown() {
+            effectsDropdown.innerHTML = '';
+            Object.keys(effects).forEach(effectKey => {
+                const effect = effects[effectKey];
+                const option = document.createElement('div');
+                option.className = 'mode-option';
+                if (effectKey === currentEffect) {
+                    option.classList.add('active');
+                }
+                option.textContent = effect.name;
+                option.dataset.effect = effectKey;
+                option.addEventListener('click', () => {
+                    setEffect(effectKey);
+                    effectsDropdown.classList.remove('show');
+                });
+                effectsDropdown.appendChild(option);
+            });
+        }
+        
+        function setEffect(effectKey) {
+            if (!effects[effectKey]) return;
+            
+            currentEffect = effectKey;
+            currentEffectName.textContent = effects[effectKey].name;
+            
+            // Update active state
+            document.querySelectorAll('#effectsDropdown .mode-option').forEach(option => {
+                option.classList.toggle('active', option.dataset.effect === effectKey);
+            });
+            
+            // Clear trails when switching effects
+            if (effectKey !== 'trails' && effectKey !== 'plasma' && effectKey !== 'fire') {
+                particles.forEach(particle => {
+                    particle.trail = [];
+                });
+            }
+        }
+        
+        // Toggle effects dropdown
+        effectsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            effectsDropdown.classList.toggle('show');
+            modeDropdown.classList.remove('show');
+        });
+        
+        populateEffectsDropdown();
+        
+        // Initialize audio on first user interaction (browser requirement)
+        document.addEventListener('click', () => {
+            ensureAudioInitialized();
+        }, { once: true });
+        
+        document.addEventListener('mousemove', () => {
+            ensureAudioInitialized();
+        }, { once: true });
 
         // 3D toggle functionality
         const toggle3D = document.getElementById('toggle3D');

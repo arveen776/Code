@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonomous Cube Assembly</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
+            min-width: 250px;
+            backdrop-filter: blur(10px);
+        }
+
+        #controls h2 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #4CAF50;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        select, button {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            background: #2a2a2a;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        select:hover, button:hover {
+            background: #3a3a3a;
+        }
+
+        button {
+            background: #4CAF50;
+            border: none;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        #info div {
+            margin: 5px 0;
+        }
+
+        .status {
+            color: #4CAF50;
+        }
+
+        .warning {
+            color: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div id="controls">
+        <h2>🎲 Cube Assembly Control</h2>
+        
+        <div class="control-group">
+            <label>Target Shape:</label>
+            <select id="shape-select">
+                <option value="cube">Cube (3x3x3)</option>
+                <option value="pyramid">Pyramid</option>
+                <option value="wall">Wall (5x1x3)</option>
+                <option value="tower">Tower (1x1x5)</option>
+                <option value="L-shape">L-Shape</option>
+                <option value="stairs">Stairs</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Number of Cubes:</label>
+            <select id="cube-count">
+                <option value="10">10 cubes</option>
+                <option value="20" selected>20 cubes</option>
+                <option value="30">30 cubes</option>
+                <option value="50">50 cubes</option>
+            </select>
+        </div>
+
+        <button id="start-btn">Start Assembly</button>
+        <button id="reset-btn">Reset</button>
+    </div>
+
+    <div id="info">
+        <div class="status">Status: <span id="status">Loading...</span></div>
+        <div>Assembled: <span id="assembled">0</span> / <span id="total">0</span></div>
+        <div>Time: <span id="time">0.0</span>s</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <!-- Use unpkg for CANNON.js as it's more reliable -->
+    <script src="https://unpkg.com/cannon@0.20.0/build/cannon.js"></script>
+    <script>
+        // Verify libraries loaded
+        window.addEventListener('load', function() {
+            console.log('Page loaded. THREE:', typeof THREE, 'CANNON:', typeof CANNON);
+            if (typeof THREE === 'undefined') {
+                console.error('THREE.js failed to load!');
+            }
+            if (typeof CANNON === 'undefined') {
+                console.error('CANNON.js failed to load!');
+                console.log('Trying alternative CDN...');
+                // Try alternative CDN
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.20.0/cannon.min.js';
+                script.onload = function() {
+                    console.log('CANNON.js loaded from Cloudflare CDN');
+                };
+                script.onerror = function() {
+                    console.error('All CANNON.js CDN sources failed!');
+                    alert('Failed to load CANNON.js physics library.\n\nPlease check:\n1. Your internet connection\n2. Firewall/antivirus settings\n3. Try a different browser\n\nYou can also download the library manually.');
+                };
+                document.head.appendChild(script);
+            }
+        });
+    </script>
+    <script src="simulation-simple.js"></script>
+</body>
+</html>
+
